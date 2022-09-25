@@ -45,7 +45,7 @@ It also creates a `relationshipsSerial.txt` file that can be used to add release
 ./idagio.pl --url IdagioAlbumUrl
 ```
 
-There will be nummber of displays to stdout and at the end your default browser should open Musicbrainz release add form. You might have to provide userid/pass as I did not automate this.
+There will be nummber of displays to stdout and at the end your default browser should open Musicbrainz release add form. You might have to provide userid/pass as I did not automate.
 
 ### discogs
 
@@ -67,7 +67,7 @@ Most recent Ivan Fisher releases do not follow standards and will generate warni
 
 ### artist and work relationships
 
-Both above scripts generate relationshipsSerial.txt file that is used by a script addRelationships.pl to add artist credits and works in the Musicbrainz Relationship tab.
+Both above scripts generate `relationshipsSerial.txt` file that is used by the script addRelationships.pl to add artist credits and works in the Musicbrainz Relationship tab.
 
 First, you have to have webdriver up and running. I'm using Opera driver
 
@@ -100,4 +100,4 @@ There are plenty.
 * Secondly, the quality and consistency of source metadata must be good, if you try an odly formatted entry in discogs, you will not get much done.
 * Thirdly, creating Work Relationships is challenging at best of times, so your success ratio will vary. Please verify all entries for correction, especially work rels, and edit or remove as required.  
 
-Most of my time as an editor is spend on Classical Music and Jazz. I find this sets of scripts time saving and hope that others will have similar experience.
+Most of my time as an editor is spend entering Classical and Jazz releases. I find this sets of scripts time saving and hope that others will have similar experience.
