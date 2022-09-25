@@ -45,7 +45,7 @@ It also creates a `relationshipsSerial.txt` file that can be used to add release
 ./idagio.pl --url IdagioAlbumUrl
 ```
 
-There will be nummber of displays to stdout and at the end your default browser should open Musicbrainz release add form. You might have to provide userid/pass as I did not automate.
+There will be a number of displays to stdout and at the end your default browser should open Musicbrainz release add form. You might have to provide userid/pass as I did not automate.
 
 ### discogs
 
@@ -56,7 +56,7 @@ It also creates a `relationshipsSerial.txt` file that can be used to add release
 ./discogs.pl --url DiscogsAlbumUrl
 ```
 
-There will be number of displays to stdout and at the end, your default browser should open Musicbrainz release add form. You might have to provide userid/pass as I did not automate.
+There will be a number of displays to stdout and at the end, your default browser should open Musicbrainz release add form. You might have to provide userid/pass as I did not automate.
 
 Discogs release must be of a good quality, it needs to provide composer and artist per tracks. Also the formatting of main wok and movement must adhere to latest guidelines.
 For example, this is an example of a good release:
