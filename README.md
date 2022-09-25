@@ -94,7 +94,7 @@ This process is relativelly slow to account for page javascript completion.
 
 Once all the data has been entered, the script will exit but the browser window will remain open till you close it. Please don't forget to verify data entered and save. I do not save automatically as this would place the script into a bot territory.
 
-## limitations
+## Limitations
 There are plenty.
 * Firstly, I'm not an experienced perl programmer, there are plenty of areas for improvement.
 * Secondly, the quality and consistency of source metadata must be good, if you try an odly formatted entry in discogs, you will not get much done.
