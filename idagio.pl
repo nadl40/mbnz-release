@@ -996,11 +996,9 @@ sub getPieceData {
 sub editNote {
  my ($albumUrl) = @_;
 
- if ($albumUrl) {
+ my $editNote = $albumUrl . " --- " . "idagio.pl Classical Music Uploader" ." --- " . "https://github.com/nadl40/mbnz-release";
 
-  $htmlPart = '<input type="hidden" name="edit_note" value="' . "from " . $albumUrl . '">' . "\n";
-
- }
+ $htmlPart = '<input type="hidden" name="edit_note" value="' . "from " . $editNote . '">' . "\n";
 
  return $htmlPart;
 
@@ -1206,8 +1204,8 @@ sub setReleaseCredits {
  my @releaseCredit          = ();
  my $hash                   = {};
 
- my $size  = "";
- my $i     = 0;
+ my $size = "";
+ my $i    = 0;
 
  # composers first
  if ( $releaseArtists->{"composer"} ) {

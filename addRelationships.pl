@@ -107,6 +107,11 @@ sleep(WAIT_FOR_MB);
 my ( $element, $recording, $recordingSelector ) = "";
 my @trackSelector = ();
 
+# Note
+my $noteText = "addRelationships.pl Classical Music Uploader" . " --- " . "https://github.com/nadl40/mbnz-release";
+$element = wait_until { $driver->find_element_by_class_name('editnote') };
+my $note = wait_until { $driver->find_child_element( $element, './div/textarea' ) };
+
 # checkbox to select a track
 my @tracks = $driver->find_elements( "track", "class_name" );
 foreach my $track (@tracks) {
@@ -146,6 +151,9 @@ foreach my $type ( keys %{$hashRel} ) {
   &addWorks( $driver, $hashRel->{$type}, @workSelector );
  }
 }
+
+# add note at the end
+$note->send_keys($noteText);
 
 # quit manually as this gives time on long or problematic releases
 #sleep 300;

@@ -1,6 +1,6 @@
 # perl scripts to add classical releases to Musicbrainz
 
-This repo contains few perl scripts to add Classical and Jazz releases to Musicbrainz.org and populate arrtist and work relationships. 
+This repo contains few perl scripts to add Classical and Jazz releases to Musicbrainz.org and populate artist and work relationships. 
 
 ## Table of contents
 
