@@ -125,6 +125,15 @@ This process is relativelly slow to account for page javascript completion.
 
 Once all the data has been entered, the script will exit but the browser window will remain open till you close it. Please don't forget to verify data entered and save. I do not save automatically as this would place the script into a bot territory.
 
+You can also add relationships to an existing Musicbrainz release:
+
+* find the release in either idagio or discogs
+* run idagio or discogs release add but cancel adding release
+* you might text edit `realtionshipsSerial.txt` and remove the artist or works
+* run addRelatioships.pl
+
+This is especially usefull for adding new work rels, any existing work rels will not be ovverwritten. Existing artist credits will be marked as a change unfortunatelly. 
+
 ## Limitations
 There are plenty.
 * Firstly, I'm not an experienced perl programmer, there are plenty of areas for improvement.
