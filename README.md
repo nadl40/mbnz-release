@@ -20,6 +20,37 @@ This repo contains few perl scripts to add Classical and Jazz releases to Musicb
 * basic perl knowledge
 * developed and tested on Ubuntu 20.04.4 LTS, perl -v v5.30.0
 * webdriver https://www.selenium.dev/documentation/webdriver/
+* following perl modules (and more likelly more)
+```
+Config::General
+Cwd
+Data::Dumper::Simple
+Encode
+Env
+Exporter
+File::Basename
+File::Copy
+File::Find::Rule
+Getopt::Long
+HTTP::Request
+Hash::Persistent
+JSON::MaybeXS
+JSON::XS::VersionOneAndTwo
+LWP::UserAgent
+List::MoreUtils
+Mojo::DOM
+Mojo::UserAgent
+Selenium::Remote::Driver
+Selenium::Remote::WDKeys
+Selenium::Waiter
+Storable
+String::Unquotemeta
+String::Util
+Text::CSV
+Text::Levenshtein
+URI::Escape
+XML::LibXML
+```
 
 ## Installation
 
