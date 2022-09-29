@@ -13,6 +13,7 @@ This repo contains few perl scripts to add Classical and Jazz releases to Musicb
   * [discogs](#discogs)
   * [relationships](#relationships)
 - [Limitations](#limitations)
+- [Performance](#performance)
 
 <!-- tocstop -->
 
@@ -61,7 +62,7 @@ git clone https://github.com/nadl40/mbnz-release.git
 cd mbnz-release
 ```
 
-There is a model config file `mbnz.conf` for your Musicbrainz.org id/password.
+There is a model config file `mbnz.conf` for your Musicbrainz.org id/password and script options.
 Edit and copy it to $HOME/.config/mbnz directory. 
 
 
@@ -141,3 +142,15 @@ There are plenty.
 * Thirdly, creating Work Relationships is challenging at best of times, so your success ratio will vary. Please verify all entries for correction, especially work rels, and edit or remove as required.  
 
 Most of my time as an editor is spend entering Classical and Jazz releases. I find this sets of scripts time saving and hope that others will have similar experience.
+
+## Performance
+One of my goals was to provide mbid on a form or rels webdriver. So I do a lot of lookups.
+
+Artist or Places do not require many multiple lookups, things get complicated when trying to identify work relationships.
+
+The first step is to identify main work, for example a Symphony, when this is accomplished, I'm using a movement position to derive individual recording work relationshop. This works if the source follows standard main work breakdown into movements, it breaks down if the source has non standard movements. This is often hapenning with Betthoven 9th Symphony for example.
+
+If I can't determine main work, I'm searching within a composer for the movement by itself. There are many api calls and that requires multiple cals that need to be timed otherwise Musicbrainz complains and does not return data. There is a sleep parameter in the config file, please adjust as required.
+
+A much better solution is to run the scripts against a mirror database, in this case there are no limits how often you can query the database and sleep parm is ignored. 
+

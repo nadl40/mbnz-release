@@ -25,6 +25,12 @@ use Env;
 use strict;
 use warnings;
 
+#for my modules start
+use File::Basename qw(dirname);
+use Cwd qw(abs_path);
+use lib dirname( dirname abs_path $0) . '/mbnz/lib';
+use Rels::Utils qw(readConfig);
+
 $| = 1;
 
 # set constant for sleep in seconds
@@ -558,18 +564,6 @@ sub login {
  $driver->find_element_by_name('password')->send_keys($password);
  $driver->find_element_by_class("login")->click();
 
-}
-
-# read and parse config file
-sub readConfig {
- my ( $confPath, $confFile ) = @_;
- my $conf = Config::General->new(
-  -ConfigFile  => $confPath . "/" . $confFile,
-  -SplitPolicy => 'equalsign'
- );
- my %config = $conf->getall;    #get all config
-
- return \%config;
 }
 
 __END__

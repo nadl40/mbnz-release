@@ -21,12 +21,14 @@ use Getopt::Long;
 use String::Util qw(trim);
 use Text::Levenshtein qw(distance);
 use Mojo::DOM;
+use Env;
+use Config::General;
 
 #for my modules start
 use File::Basename qw(dirname);
 use Cwd qw(abs_path);
 use lib dirname( dirname abs_path $0) . '/mbnz/lib';
-use Rels::Utils qw(clean delExtension dumpToFile delExtension);
+use Rels::Utils qw(clean delExtension dumpToFile  readConfig );
 use Rels::Rels qw(getTrackPositionMbid getPlaceMbid getArtistMbid getWorkMbid);
 
 binmode( STDOUT, "encoding(UTF-8)" );
@@ -46,6 +48,39 @@ if ( !$idagioUrl ) {
  exit;
 }
 
+# keep track of things that are already looked up, save trips to mbnz
+my $lookup = {};
+
+# get config
+my $confPath  = ${HOME} . "/.config/mbnz";
+my $confFile  = "mbnz.conf";
+my $configRef = &readConfig( $confPath, $confFile );    #read config file
+
+#===============================================
+# set some from config
+#
+#===============================================
+
+# auto launch browser
+my $launchBrowser = "";
+if ( $configRef->{"options"}->{"launch_browser"} ) {
+ $launchBrowser = $configRef->{"options"}->{"launch_browser"};
+}
+
+# get base url
+our $urlBase = "https://musicbrainz.org";
+if ( $configRef->{"local"}->{"local_url"} ) {
+ $urlBase = $configRef->{"local"}->{"local_url"};
+}
+print("url base ",$urlBase,"\n");
+
+# get sleep time if local not set
+our $sleepTime = $configRef->{"local"}->{"sleep_time_seconds"};
+if ( $configRef->{"local"}->{"local_url"} ) {
+ $sleepTime = 0;
+}
+
+
 print Dumper ($idagioUrl);
 
 my ( $cmd, $return ) = "";
@@ -55,7 +90,6 @@ $cmd    = 'wget ' . $idagioUrl . " -O current.html";
 $return = `$cmd`;
 
 use constant HTML_FILE => 'current.html';
-use constant MB_URL    => 'https://musicbrainz.org/ws/2/';
 
 open( my $fh, '<', HTML_FILE )
   or die "Could not open file 'HTML_FILE' $!";
@@ -219,7 +253,11 @@ $htmlForm = $htmlForm . '<script>document.forms[0].submit()</script>' . "\n";
 #open in default browser
 $cmd = "xdg-open form.html";
 
-$return = `$cmd`;
+if ( $launchBrowser eq 'y' ) {
+ $return = `$cmd`;
+} else {
+ print("not launching a browser \n");
+}
 
 ############################# subs ############################################
 
@@ -456,7 +494,7 @@ sub loadEnsembles {
     } else {
 
      if ( !$joinphrase ) {
-      print( "searching MB for: ", $idagio->{$entity}->{$ensemble}->{"name"}, "\n" );
+      print( "looking up: ", $idagio->{$entity}->{$ensemble}->{"name"}, "\n" );
       ( $mbid, $artistName ) = &getArtistMbid( $idagio->{$entity}->{$ensemble}->{"name"} );
      }
 
@@ -500,7 +538,7 @@ sub loadInstruments {
     if ( $idagio->{$entity}->{$instrument}->{"title"} =~ m/soprano|tenor|bass|baritone/i ) {
 
      $voice = $idagio->{$entity}->{$instrument}->{"title"};
-     print( "searching MB for: ", $idagio->{$entity}->{$instrument}->{"title"}, " skipped \n" );
+     print( "looking up ", $idagio->{$entity}->{$instrument}->{"title"}, " skipped \n" );
 
      $keystrokes = $keystrokesMap{ lc($voice) };
      if ( !$keystrokes ) {
@@ -517,7 +555,6 @@ sub loadInstruments {
      $hash->{$instrument}->{"keystrokes"} = $keystrokes;
 
     } else {
-     print( "searching MB for: ", $idagio->{$entity}->{$instrument}->{"title"}, "\n" );
 
      ( $mbid, $instrumentName ) = &getInstrumentMbid( lc( $idagio->{$entity}->{$instrument}->{"title"} ) );
 
@@ -559,7 +596,6 @@ sub loadPersons {
     } else {
 
      if ( !$joinphrase ) {
-      print( "searching MB for: ", $idagio->{$entity}->{$person}->{"name"}, "\n" );
       ( $mbid, $artistName ) = &getArtistMbid( $idagio->{$entity}->{$person}->{"name"} );
      }
 
@@ -1069,15 +1105,16 @@ sub albumLabel {
 
  foreach my $id ( keys %{$idagio} ) {
   $albumLabel = $idagio->{$id}->{"copyright"};
-  print( "searching MB for: ", $albumLabel, "\n" );
+  print( "looking up: ", $albumLabel, "\n" );
 
-  my $url01     = 'https://musicbrainz.org/ws/2/label?query=';
+  my $url01     = $urlBase.'/ws/2/label?query=';
   my $url03     = '&limit=1';
   my $url02     = "label:" . uri_escape_utf8($albumLabel);
   my $searchUrl = $url01 . $url02 . $url03;
 
   $cmd = "curl -s " . $searchUrl;
 
+  sleep($sleepTime);
   my $xml = `$cmd`;
 
   $xml =~ s/xmlns/replaced/;
@@ -1211,8 +1248,8 @@ sub setReleaseCredits {
  if ( $releaseArtists->{"composer"} ) {
   @arr  = split( ",", $releaseArtists->{"composer"} );
   $size = @arr;
-  foreach my $composer (@arr) {
-   print( "searching MB for: ", $composer, "\n" );
+  foreach my $composer (@arr) { 
+  	
    $i++;
 
    my ( $artistId, $artistName ) = &getArtistMbid($composer);
@@ -1238,7 +1275,6 @@ sub setReleaseCredits {
   $size = @arr;
   $i    = 0;
   foreach my $soloist (@arr) {
-   print( "searching MB for: ", $soloist, "\n" );
    $i++;
 
    my ( $artistId, $artistName ) = &getArtistMbid($soloist);
@@ -1259,7 +1295,6 @@ sub setReleaseCredits {
   $size = @arr;
   $i    = 0;
   foreach my $ensemble (@arr) {
-   print( "searching MB for: ", $ensemble, "\n" );
    $i++;
 
    my ( $artistId, $artistName ) = &getArtistMbid($ensemble);
@@ -1280,7 +1315,6 @@ sub setReleaseCredits {
   $size = @arr;
   $i    = 0;
   foreach my $conductor (@arr) {
-   print( "searching MB for: ", $conductor, "\n" );
    $i++;
 
    my ( $artistId, $artistName ) = &getArtistMbid($conductor);

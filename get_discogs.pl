@@ -107,10 +107,26 @@ $releaseHashSort = dclone $releaseHash;
 # expand track info for regular
 &addArtistToTracks( $artistHash, $releaseHash );
 
+# before writing to file, fix the track positions as just incremental numbers for selenium
+my $newHash = {};
+my $counter = 0;
+my $trackNo = "";
+foreach my $item ( keys %{$releaseHash} ) {
+ if ( $item ne "tracks" ) {
+  $newHash->{$item} = $releaseHash->{$item};
+ } else {
+  foreach my $track ( sort { $a cmp $b } keys %{ $releaseHash->{$item} } ) {
+   $counter++;
+   $trackNo = sprintf( "%02d", $counter );
+   $newHash->{$item}->{$trackNo} = $releaseHash->{$item}->{$track};
+  }
+ }
+}
+
 #&dumpToFile( "metadata.txt", \$releaseHash );
 # write hash to read later
 my $obj = Hash::Persistent->new( "metadata.txt", { format => "dumper" } );    # Dumper format, easy to read
-$obj->{string} = $releaseHash;                                                # make sure this is a proper hash reference, watch out for "\"
+$obj->{string} = $newHash;                                                    # make sure this is a proper hash reference, watch out for "\"
 $obj->commit;                                                                 # save
 undef $obj;
 
@@ -118,7 +134,8 @@ undef $obj;
 &addArtistToTracks( $artistHashSort, $releaseHashSort );
 
 #&dumpToFile( "metadataSort.txt", \$releaseHashSort );
-# write hash to read later
+# write hash toprint Dumper($releaseHashSort); exit(0);
+
 $obj = Hash::Persistent->new( "metadataSort.txt", { format => "dumper" } );              # Dumper format, easy to read
 $obj->{string} = $releaseHashSort;                                                       # make sure this is a proper hash reference, watch out for "\"
 $obj->commit;                                                                            # save

@@ -1,6 +1,5 @@
 use Data::Dumper::Simple;
 
-use constant MB_URL                  => 'https://musicbrainz.org/ws/2/';
 use constant DISTANCE_TOLERANCE      => 3;
 use constant DISTANCE_TOLERANCE_WORK => 15;
 
@@ -20,10 +19,8 @@ sub getTrackPositionMbid {
 
  # set up the command
  # https://musicbrainz.org/ws/2/work/60e1dcf6-e728-35be-8948-ba74500b6c6e?inc=work-rels
- $mbzUrl = "https://musicbrainz.org/ws/2/work/";
-
- #$mbzUrl = "http://mzbnlocal:5000/ws/2/work/";
- $cmd = "curl -s " . $mbzUrl . $Mbid . $args;
+ $mbzUrl = $urlBase . "/ws/2/work/";
+ $cmd    = "curl -s " . $mbzUrl . $Mbid . $args;
 
  $counterPosition = $counterPosition + 1;
  &dumpToFile( "workTrackPosition-" . $counterPosition . ".cmd", $cmd );    #exit(0);
@@ -32,7 +29,7 @@ sub getTrackPositionMbid {
  if ( !$mainWorkXML->{$Mbid} ) {
 
   #need to pause between api calls, not needed when running local instance;
-  sleep(1);
+  sleep($sleepTime);
 
   $xml = `$cmd`;
   $xml =~ s/xmlns/replaced/ig;
@@ -81,7 +78,7 @@ sub getWorkAliasesMbid {
 
  my ( $Mbid, $title ) = @_;
 
- my $url01 = 'https://musicbrainz.org/ws/2/work?query=';
+ my $url01 = $urlBase . '/ws/2/work?query=';
 
  print( "\tsearching MB for title and alias: ", $title );
  my $url02_1 = "work:" . uri_escape_utf8($title);
@@ -89,6 +86,7 @@ sub getWorkAliasesMbid {
 
  my $searchUrl = $url01 . $url02_1 . $url02_2;
 
+ sleep($sleepTime);
  my $cmd = "curl -s " . $searchUrl;
 
  my $xml = `$cmd`;
@@ -173,7 +171,7 @@ sub getWorkMbid {
 
  #if ($title =~ m/Corrente Quinta/) {
 
- my $url01 = 'https://musicbrainz.org/ws/2/work?query=';
+ my $url01 = $urlBase . '/ws/2/work?query=';
 
  print( "searching MB for: ", $title );
  my $url02_1 = "work:" . uri_escape_utf8($title);
@@ -210,6 +208,7 @@ sub getWorkMbid {
      my $composerId = $artistName->getAttribute("id");
      if ( $composerId eq $mbId ) {
 
+      # disambiguation have special editions and arrangements etc.
       if ( !$work->findvalue("disambiguation") ) {
 
        my $mbTitle = $work->findvalue("title");
@@ -227,7 +226,7 @@ sub getWorkMbid {
         }
 
        }
-      }
+      } # disambiguation
      }
     }
    }
@@ -238,7 +237,6 @@ sub getWorkMbid {
  #} #debug
 
  print( " : ", $mbIdWork, "\n" );
-
  return $mbIdWork;
 }
 
@@ -246,9 +244,16 @@ sub getWorkMbid {
 sub getInstrumentMbid {
  my ($name) = @_;
 
- #print Dumper();
+ if ( $lookup->{$name} ) {
 
- my $url01 = 'https://musicbrainz.org/ws/2/instrument/?query=';
+  #print( "\tfound in lookup", "\n" );
+  return ( $lookup->{$name}->{"instrumentId"}, $lookup->{$name}->{"instrumentName"} );
+ }
+
+ print( "looking up: ", $name, "\n" );
+ sleep(0.5);
+
+ my $url01 = $urlBase . '/ws/2/instrument/?query=';
 
  my $url02 = $name;
  $url02     = uri_escape_utf8($url02);
@@ -281,6 +286,9 @@ sub getInstrumentMbid {
    $instrumentId   = $instrument->getAttribute("id");
    $instrumentName = $instrument->findvalue("name");
 
+   $lookup->{$name}->{"instrumentId"}   = $instrumentId;
+   $lookup->{$name}->{"instrumentName"} = $instrumentName;
+
    return ( $instrumentId, $instrumentName );
   }
 
@@ -299,6 +307,9 @@ sub getInstrumentMbid {
      $instrumentId   = $instrument->getAttribute("id");
      $instrumentName = $instrument->findvalue("name");
 
+     $lookup->{$name}->{"instrumentId"}   = $instrumentId;
+     $lookup->{$name}->{"instrumentName"} = $instrumentName;
+
      return ( $instrumentId, $instrumentName );
     }
 
@@ -316,16 +327,31 @@ sub getInstrumentMbid {
 sub getArtistMbid {
  my ($name) = @_;
 
+ #print Dumper($lookup);
+ if ( $lookup->{$name} ) {
+  return ( $lookup->{$name}->{"artistId"}, $lookup->{$name}->{"mbArtistName"} );
+ }
+
+ print( "looking up: ", $name, "\n" );
+ sleep(0.5);
+
  # try both AND and OR
  my ( $artistId, $mbArtistName, $url02 ) = "";
  $url02 = 'artist:' . $name . ' AND alias:' . $name;
+
  ( $artistId, $mbArtistName ) = &getMBArtist( $url02, $name );
+
  if ($artistId) {
+  $lookup->{$name}->{"artistId"}     = $artistId;
+  $lookup->{$name}->{"mbArtistName"} = $mbArtistName;
   return ( $artistId, $mbArtistName );
  }
 
  $url02 = 'artist:' . $name . ' OR alias:' . $name;
  ( $artistId, $mbArtistName ) = &getMBArtist( $url02, $name );
+
+ $lookup->{$name}->{"artistId"}     = $artistId;
+ $lookup->{$name}->{"mbArtistName"} = $mbArtistName;
 
  return ( $artistId, $mbArtistName );
 
@@ -337,8 +363,8 @@ sub getMBArtist {
  $url02 = uri_escape_utf8($url02);
 
  # https://musicbrainz.org/ws/2/artist?query=artist%3ABernard%20Richter'
- my $cmd = "curl -s " . MB_URL . "artist?query=" . $url02;
-
+ my $cmd = "curl -s " . $urlBase . "/ws/2/artist?query=" . $url02;
+ 
  my $xml = `$cmd`;
 
  $xml =~ s/xmlns/replaced/;
@@ -403,10 +429,10 @@ sub getPlaceMbid {
  if ($placeName) {
 
   #http://musicbrainz.org/ws/2/place/?query=chipping
-  my $url01 = 'https://musicbrainz.org/ws/2/place?query=';
+  my $url01 = $urlBase . '/ws/2/place?query=';
   my $url03 = '&limit=1';
 
-  print( "searching MB for: ", $placeName, "\n" );
+  print( "looking up: ", $placeName, "\n" );
 
   # get MB place atttributes
   $url02     = $placeName;

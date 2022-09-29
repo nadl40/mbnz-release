@@ -21,12 +21,14 @@ use String::Util qw(trim);
 use Text::Levenshtein qw(distance);
 use File::Basename;
 use Mojo::DOM;
+use Env;
+use Config::General;
 
 #for my modules start
 use File::Basename qw(dirname);
 use Cwd qw(abs_path);
 use lib dirname( dirname abs_path $0) . '/mbnz/lib';
-use Rels::Utils qw(clean delExtension dumpToFile delExtension);
+use Rels::Utils qw(clean delExtension dumpToFile readConfig);
 use Rels::Rels qw(getTrackPositionMbid getPlaceMbid getArtistMbid getWorkMbid);
 
 # autoflush
@@ -52,8 +54,40 @@ if ( !$discogsUrl ) {
  exit;
 }
 
+# get config
+my $confPath  = ${HOME} . "/.config/mbnz";
+my $confFile  = "mbnz.conf";
+my $configRef = &readConfig( $confPath, $confFile );    #read config file
+
+#==========================================
+# set some from config
+#==========================================
+
+# auto launch browser
+my $launchBrowser = "";
+if ( $configRef->{"options"}->{"launch_browser"} ) {
+ $launchBrowser = $configRef->{"options"}->{"launch_browser"};
+}
+
+# get base url
+our $urlBase = "https://musicbrainz.org";
+if ( $configRef->{"local"}->{"local_url"} ) {
+ $urlBase = $configRef->{"local"}->{"local_url"};
+}
+print( "url base ", $urlBase, "\n" );
+
+# get sleep time if local not set
+our $sleepTime = $configRef->{"local"}->{"sleep_time_seconds"};
+if ( $configRef->{"local"}->{"local_url"} ) {
+ $sleepTime = 0;
+}
+
 my ( $counterWork, $counterPosition, $counterAlias ) = 0;
 my $mainWorkXML = {};
+
+# remove cmd and xml files
+&delExtension("xml");
+&delExtension("cmd");
 
 my %keystrokesMap = (
  "alto vocals"          => 2,
@@ -97,10 +131,12 @@ if ( -e "metadata.txt" ) {
 #we've got the hash, let's do the release add form first
 #first fixed stuff
 use constant HTML_FILE               => 'current.html';
-use constant MB_URL                  => 'https://musicbrainz.org/ws/2/';
 use constant DISTANCE_TOLERANCE      => 3;
 use constant PART_THRESHOLD          => 0.60;
 use constant DISTANCE_TOLERANCE_WORK => 15;
+
+# keep track of things that are already looked up, save trips to mbnz
+my $lookup = {};
 
 #start the form
 my $htmlForm = "";
@@ -200,9 +236,11 @@ $htmlForm = $htmlForm . '<script>document.forms[0].submit()</script>' . "\n";
 #open in default browser
 $cmd = "xdg-open form.html";
 
-#print("not adding \n");
-
-$return = `$cmd`;
+if ( $launchBrowser eq 'y' ) {
+ $return = `$cmd`;
+} else {
+ print("not launching a browser \n");
+}
 
 #======================================= subs ======================================
 #
@@ -241,7 +279,6 @@ sub albumTracks {
  my $tracks = {};
 
  # sort by track
- #foreach my $track ( sort { $a <=> $b } keys %{$discogs} ) {
  foreach my $track ( sort { $a cmp $b } keys %{$discogs} ) {
 
   #print Dumper($discogs->{$track});
@@ -305,6 +342,9 @@ sub albumTracks {
 # format html for tracks
 sub formatTracksForm {
  my ( $trackHash, $media ) = @_;
+
+ # replace
+ $media =~ s/Box Set/CD/ig;
 
  my $htmlForm = '<input type="hidden" name="mediums.0.format" value="' . $media . '">' . "\n";
 
@@ -776,7 +816,8 @@ sub populateHash {
  my $artistWork = trim( substr( $artist, 0, index( $artist, "\(" ) ) );
 
  if ( !$data->{$type}->{$artistWork}->{"name"} ) {
-  print( "looking up: ", $artistWork, "\n" );
+
+  #print( "looking up: ", $artistWork, "\n" );
   ( $mbid, $artistName ) = &getArtistMbid($artistWork);
 
   # don't use mb name
@@ -790,7 +831,8 @@ sub populateHash {
    my $start      = index( $artist, "\(" ) + 1;
    my $end        = index( $artist, "\)" );
    my $instrument = trim( substr( $artist, $start, $end - $start ) );
-   print( "looking up: ", $instrument, "\n" );
+
+   #print( "looking up: ", $instrument, "\n" );
 
    #print Dumper($instrument);
    #get the mb id if not vocals
@@ -891,12 +933,13 @@ sub albumLabel {
 
  $albumLabel = uri_escape_utf8($discogs);
 
- my $url01     = 'https://musicbrainz.org/ws/2/label?query=';
+ my $url01     = $urlBase . '/ws/2/label?query=';
  my $url02     = "label:" . $albumLabel . uri_escape_utf8(" and alias") . ":" . $albumLabel;
  my $searchUrl = $url01 . $url02;
 
  $cmd = "curl -s " . $searchUrl;
 
+ sleep($sleepTime);
  my $xml = `$cmd`;
 
  $xml =~ s/xmlns/replaced/;

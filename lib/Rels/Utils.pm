@@ -1,6 +1,18 @@
 # export module
 use Exporter qw(import);
-our @EXPORT_OK = qw(clean delExtension dumpToFile delExtension);
+our @EXPORT_OK = qw(clean delExtension dumpToFile delExtension readConfig);
+
+# read and parse config file
+sub readConfig {
+ my ( $confPath, $confFile ) = @_;
+ my $conf = Config::General->new(
+  -ConfigFile  => $confPath . "/" . $confFile,
+  -SplitPolicy => 'equalsign'
+ );
+ my %config = $conf->getall;    #get all config
+
+ return \%config;
+}
 
 # stadard title cleanup after loujine
 sub clean {
