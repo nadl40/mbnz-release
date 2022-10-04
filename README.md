@@ -12,7 +12,7 @@ This repo contains few perl scripts to add Classical and Jazz releases to Musicb
   * [idagio](#idagio)
   * [discogs](#discogs)
   * [relationships](#relationships)
-  * [recordings clone](#recordingsClone)
+  * [recordings clone](#recordings-clone)
 - [Limitations](#limitations)
 - [Performance](#performance)
 
