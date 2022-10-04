@@ -12,7 +12,7 @@ This repo contains few perl scripts to add Classical and Jazz releases to Musicb
   * [idagio](#idagio)
   * [discogs](#discogs)
   * [relationships](#relationships)
-  * [recordings_clone](#recordings clone)
+  * [recordingsClone](#recordingsClone)
 - [Limitations](#limitations)
 - [Performance](#performance)
 
@@ -136,7 +136,7 @@ You can also add relationships to an existing Musicbrainz release:
 
 This is especially usefull for adding new work rels, any existing work rels will not be ovverwritten. Existing artist credits will be marked as a change unfortunatelly. 
 
-### recordings clone
+### recordingsClone
 
 This script use case is when a new release is a compilation of previous releases, including multivolume sources.
 For example, https://musicbrainz.org/release/5cebdc6c-cdc5-41b5-a09b-73e34c245d90 is just a repackaging of previous releases.
