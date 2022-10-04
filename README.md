@@ -150,6 +150,7 @@ Next we can start main script
 ```
 
 `clone.csv` sample is provided in the script folder. It's a csv delimited with `:` to allow for usage of comma to specify track list. Track list can be comma delimited or have a range (for example 2-5) or both.
+
 *Empty tracklist means all tracks.
 *Empty source volume means all volumes but in reality it means volume 1.
 *Empty target volume is not allowed as we can clone 1 to 1 releases when creating a new release.
