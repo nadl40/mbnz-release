@@ -12,6 +12,7 @@ This repo contains few perl scripts to add Classical and Jazz releases to Musicb
   * [idagio](#idagio)
   * [discogs](#discogs)
   * [relationships](#relationships)
+  * [recordings clone](#recordings clone)
 - [Limitations](#limitations)
 - [Performance](#performance)
 
@@ -134,6 +135,28 @@ You can also add relationships to an existing Musicbrainz release:
 * run addRelatioships.pl
 
 This is especially usefull for adding new work rels, any existing work rels will not be ovverwritten. Existing artist credits will be marked as a change unfortunatelly. 
+
+### recordings clone
+
+This script use case is when a new release is a compilation of previous releases, including multivolume souurce.
+For example https://musicbrainz.org/release/5cebdc6c-cdc5-41b5-a09b-73e34c245d90 is just a repackaging of precious releases.
+Linking original recordings will also link artist and work relaitonships from the original recordings.
+
+First, you have to have webdriver up and running (see above).
+
+Next we can start main script 
+```bash
+/recordingsClone.pl --clone clone.csv
+```
+
+`clone.csv` sample is provided in the script folder. It's a csv delimited with `:` to allow for usage of comma to specify track list. Track list can be comma delimited or have a range (for example 2-5) or both.
+Empty tracklist means all tracks.
+Empty source volume means all volumes but in reality it means volume 1.
+Empty target volume is not allowed as we can clone 1 to 1 releases when creating a new release.
+Multiple rows can be specifed but only 1 unique target release.
+
+After all data has been entered, the script will pause so there is a chance to review the linked recordings and enter an Edit Note.
+After save, terminate the script manually.
 
 ## Limitations
 There are plenty.

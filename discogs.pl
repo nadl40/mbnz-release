@@ -261,7 +261,8 @@ sub writeRelationshipPersistentSerialHash {
 sub editNote {
  my ($albumUrl) = @_;
 
- my $editNote = $albumUrl . " --- " . "discogs.pl Classical Music Uploader" . " --- " . "https://github.com/nadl40/mbnz-release";
+ my $crlf = chr(10).chr(13);
+ my $editNote = $albumUrl .$crlf. "discogs.pl Classical Music Uploader" .$crlf. "https://github.com/nadl40/mbnz-release";
 
  $htmlPart = '<input type="hidden" name="edit_note" value="' . "from " . $editNote . '">' . "\n";
 

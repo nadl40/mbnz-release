@@ -72,14 +72,13 @@ our $urlBase = "https://musicbrainz.org";
 if ( $configRef->{"local"}->{"local_url"} ) {
  $urlBase = $configRef->{"local"}->{"local_url"};
 }
-print("url base ",$urlBase,"\n");
+print( "url base ", $urlBase, "\n" );
 
 # get sleep time if local not set
 our $sleepTime = $configRef->{"local"}->{"sleep_time_seconds"};
 if ( $configRef->{"local"}->{"local_url"} ) {
  $sleepTime = 0;
 }
-
 
 print Dumper ($idagioUrl);
 
@@ -1032,7 +1031,8 @@ sub getPieceData {
 sub editNote {
  my ($albumUrl) = @_;
 
- my $editNote = $albumUrl . " --- " . "idagio.pl Classical Music Uploader" ." --- " . "https://github.com/nadl40/mbnz-release";
+ my $crlf = chr(10).chr(13);
+ my $editNote = $albumUrl .$crlf. "idagio.pl Classical Music Uploader" .$crlf. "https://github.com/nadl40/mbnz-release";
 
  $htmlPart = '<input type="hidden" name="edit_note" value="' . "from " . $editNote . '">' . "\n";
 
@@ -1107,7 +1107,7 @@ sub albumLabel {
   $albumLabel = $idagio->{$id}->{"copyright"};
   print( "looking up: ", $albumLabel, "\n" );
 
-  my $url01     = $urlBase.'/ws/2/label?query=';
+  my $url01     = $urlBase . '/ws/2/label?query=';
   my $url03     = '&limit=1';
   my $url02     = "label:" . uri_escape_utf8($albumLabel);
   my $searchUrl = $url01 . $url02 . $url03;
@@ -1248,8 +1248,8 @@ sub setReleaseCredits {
  if ( $releaseArtists->{"composer"} ) {
   @arr  = split( ",", $releaseArtists->{"composer"} );
   $size = @arr;
-  foreach my $composer (@arr) { 
-  	
+  foreach my $composer (@arr) {
+
    $i++;
 
    my ( $artistId, $artistName ) = &getArtistMbid($composer);

@@ -114,7 +114,8 @@ my ( $element, $recording, $recordingSelector ) = "";
 my @trackSelector = ();
 
 # Note
-my $noteText = "addRelationships.pl Classical Music Uploader" . " --- " . "https://github.com/nadl40/mbnz-release";
+my $crlf = chr(10).chr(13);
+my $noteText = "addRelationships.pl Classical Music Uploader" .$crlf. "https://github.com/nadl40/mbnz-release";
 $element = wait_until { $driver->find_element_by_class_name('editnote') };
 my $note = wait_until { $driver->find_child_element( $element, './div/textarea' ) };
 
