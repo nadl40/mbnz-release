@@ -103,7 +103,7 @@ my ( $cloneRequest, $targetRelease ) = &getRequests($obj);
 
 # expand the request by adding source recordings mbid
 my $sourceXML = {};
-my ( $counterSource, $counterTarget ) = 0;
+my ( $counterSource, $counterTarget, $counterTargetTrack ) = 0;
 
 $cloneRequest = &addMbid($cloneRequest);
 
@@ -115,7 +115,7 @@ print Dumper($cloneRequest);
 # ./operadriver --url-base=/wd/hub
 my $driver = Selenium::Remote::Driver->new(
 
- debug        => 1,
+ #debug        => 1,
  browser_name => 'chrome',
 
  port => '9515'
@@ -156,56 +156,69 @@ foreach my $volume (@volumes) {
 
 # find all expanded recordings
 my $recordingCounter = 0;
-my $offset           = 0;
+my ( $targetOffset, $sourceOffset ) = 0;
+my $found = "";
 
 my @recordings = $driver->find_elements( "edit-track-recording", "class_name" );
 foreach my $recording (@recordings) {
  $recordingCounter++;
+ $targetOffset = 0;
+ $found        = "";
 
- $offset = 0;
+ print( "\nrecordingCounter ", $recordingCounter, "\n" );
 
- # loop thru sorted requests and tracks
- foreach my $targetRelease ( keys %{$cloneRequest} ) {
+ # testing
+ if ( $recordingCounter > 0 ) {
 
-  foreach my $request ( sort { $a cmp $b } keys %{ $cloneRequest->{$targetRelease} } ) {
+  # loop thru sorted requests and tracks
+  foreach my $targetRelease ( keys %{$cloneRequest} ) {
 
-   foreach my $volume ( sort { $a cmp $b } keys %{ $cloneRequest->{$targetRelease}->{$request}->{"recordings"} } ) {
+   foreach my $volume ( sort { $a cmp $b } keys %{ $cloneRequest->{$targetRelease}->{"volume"} } ) {
 
-    foreach my $track ( sort { $a cmp $b } keys %{ $cloneRequest->{$targetRelease}->{$request}->{"recordings"}->{$volume} } ) {
+    print( "\tvolume ", $volume, "\n" );
 
-     if ( $track == ( $recordingCounter - $offset ) ) {
+    my $requestCount = $targetOffset;
 
-      print( "recording to update ", "rec counter ", $recordingCounter, ":", " offsett ", $offset, ":", " track ", $track, "\n" );
+     foreach my $track ( sort { $a cmp $b } keys %{ $cloneRequest->{$targetRelease}->{"volume"}->{$volume}->{"allTracks"} } ) {
 
-      $recording->click();
-      sleep( WAIT_FOR_MB / 2 );
+      my $mbid = $cloneRequest->{$targetRelease}->{"volume"}->{$volume}->{"allTracks"}->{$track};
 
-      # pop up search
-      my $mbidInput = $driver->get_active_element();
-      $mbidInput->send_keys( $cloneRequest->{$targetRelease}->{$request}->{"recordings"}->{$volume}->{$track} );
-      sleep(WAIT_FOR_MB);
+      $requestCount++;
 
-      # done button )
-      my $done = "";
-      wait_until { $done = $driver->find_element_by_xpath('//button[normalize-space()="Done"]') }->click();
-      sleep( WAIT_FOR_MB / 2 );
+      if ( $requestCount == $recordingCounter && $mbid ) {
+       print( "\t\t\ttrack match ", $track, ":", $mbid, "\n" );
 
-     }
+       $recording->click();
+       sleep( WAIT_FOR_MB / 2 );
 
-    }    # recordings sorted by track
-   }    # volumes sorted
+       # pop up search
+       my $mbidInput = $driver->get_active_element();
+       $mbidInput->send_keys($mbid);
+       sleep(WAIT_FOR_MB);
 
-   $offset = $offset + $cloneRequest->{$targetRelease}->{$request}->{"target"}->{"numOfTracks"};
-  }    # request
+       # done button )
+       my $done = "";
+       wait_until { $done = $driver->find_element_by_xpath('//button[normalize-space()="Done"]') }->click();
+       sleep( WAIT_FOR_MB / 2 );
 
- }    # release
+      }
+
+     }    # all tracks sorted
+
+
+    $targetOffset = $targetOffset + $cloneRequest->{$targetRelease}->{"volume"}->{$volume}->{"noOfTracks"};
+
+   }    # volume
+
+  }    # target release
+
+ }    #testing
 
 }    # recordings on page
 
-# wait for review and manuall note add
+# wait for review and manual note add
 sleep(3000);
 
-#exit(0);
 
 #************************************************
 #
@@ -217,28 +230,26 @@ sleep(3000);
 sub volumeRequested {
  my ( $volume, $cloneRequest ) = @_;
 
- my $volumeRequest = "";
+ my $request = "";
 
  foreach my $targetRelease ( keys %{$cloneRequest} ) {
 
-  foreach my $request ( keys %{ $cloneRequest->{$targetRelease} } ) {
-
-   my $targetVolume = $cloneRequest->{$targetRelease}->{$request}->{"target"}->{"volume"};
+  foreach my $volumeReq ( keys %{ $cloneRequest->{$targetRelease}->{"volume"} } ) {
 
    # $volume is an integer
-   if ( $targetVolume && int($targetVolume) == $volume ) {
-    $volumeRequest = "y";
+   if ( $volumeReq && int($volumeReq) == $volume ) {
+    $request = "y";
    }
 
    # if not defined, always click
-   if ( !$targetVolume ) {
-    $volumeRequest = "y";
+   if ( !$volumeReq ) {
+    $request = "y";
    }
 
   }    # request
  }    # release
 
- return $volumeRequest;
+ return $request;
 
 }
 
@@ -247,39 +258,160 @@ sub volumeRequested {
 sub addMbid {
  my ($request) = @_;
 
- my $trackNos = "";
+ my ( $trackNos, $sourceRelease, $sourceTracks, $targetTracks, $sourceVolume ) = "";
 
  foreach my $target ( keys %{$request} ) {
-  foreach my $requestNumber ( keys %{ $request->{$target} } ) {
 
-   my $sourceRelease = $request->{$target}->{$requestNumber}->{"source"}->{"release"};
-   my $sourceVolume  = $request->{$target}->{$requestNumber}->{"source"}->{"volume"};
+  foreach my $volume ( keys %{ $request->{$target}->{"volume"} } ) {
 
-   my $targetRelease = $target;
-   my $targetVolume  = $request->{$target}->{$requestNumber}->{"target"}->{"volume"};
+   # expand tracks for a volume
+   $request->{$target}->{"volume"}->{$volume}->{"allTracks"} = &addTargetTracks( $target, $volume );
+   $request->{$target}->{"volume"}->{$volume}->{"noOfTracks"} = &getTargetVolumeTrackCount( $target, $volume );
 
-   # expand track range to a list of tracks
-   my $sourceTracks = "";
-   my $tracks       = $request->{$target}->{$requestNumber}->{"source"}->{"tracks"};
-   if ( $tracks =~ m/-/i ) {
-    $sourceTracks = &expandRange($tracks);
-   } else {
-    $sourceTracks = $tracks;
-   }
+   # combine multiple requests per volume into one
+   foreach my $requestNo ( keys %{ $request->{$target}->{"volume"}->{$volume}->{"request"} } ) {
 
-   # having all that, get mbids for source recordings
-   my $recordings = &getMBRecordingsID( $sourceRelease, $sourceVolume, $sourceTracks );
+    # expand requested target tracks
+    $targetTracks = $request->{$target}->{"volume"}->{$volume}->{"request"}->{$requestNo}->{"target"}->{"tracks"};
 
-   # need to add number of tracks per target volume to keep track of edit objects on a page
-   my $trackCount = &getTargetVolumeTrackCount( $targetRelease, $targetVolume );
+    # if not defined
+    if ( !$targetTracks ) {
+     $targetTracks = &serializeRange( $request->{$target}->{"volume"}->{$volume}->{"noOfTracks"} );
+    }
 
-   # add to main hash
-   $request->{$target}->{$requestNumber}->{"recordings"} = $recordings;
-   $request->{$target}->{$requestNumber}->{"target"}->{"numOfTracks"} = $trackCount;
-  }
- }
+    # if it contains a range
+    if ( $targetTracks =~ m/-/i ) {
+     $targetTracks = &expandRange($targetTracks);
+    }
+
+    $request->{$target}->{"volume"}->{$volume}->{"request"}->{$requestNo}->{"target"}->{"tracks"} = $targetTracks;
+
+    # expand source tracks
+    my $sourceTracks = $request->{$target}->{"volume"}->{$volume}->{"request"}->{$requestNo}->{"target"}->{"source"}->{"tracks"};
+    if ( $sourceTracks =~ m/-/i ) {
+     $sourceTracks = &expandRange($sourceTracks);
+    }
+    $sourceRelease = $request->{$target}->{"volume"}->{$volume}->{"request"}->{$requestNo}->{"target"}->{"source"}->{"release"};
+    $sourceVolume  = $request->{$target}->{"volume"}->{$volume}->{"request"}->{$requestNo}->{"target"}->{"source"}->{"volume"};
+
+    my @arr = &getMBRecordingsID( $sourceRelease, $sourceVolume, $sourceTracks );
+
+    # create array from a list of target tracks as source tracks are just indexes
+    my @arr1 = split( ",", $request->{$target}->{"volume"}->{$volume}->{"request"}->{$requestNo}->{"target"}->{"tracks"} );
+
+
+    my $counter = 0;
+    foreach my $targetTrack (@arr1) {
+
+     if ( $arr[$counter] ) {
+      my $mbid = $arr[$counter];
+
+      # now loop thru all tracks and attach mbid
+      foreach my $requestTrackNo ( keys %{ $request->{$target}->{"volume"}->{$volume}->{"allTracks"} } ) {
+
+       if ( $requestTrackNo == $targetTrack ) {
+
+        $request->{$target}->{"volume"}->{$volume}->{"allTracks"}->{$requestTrackNo} = $mbid;
+       }
+
+      }
+
+     }
+     $counter++;
+
+    }
+
+   }    # request number
+
+  }    # volume
+
+ }    # target
+
+ #print Dumper($request);
+ #exit(0);
 
  return $request;
+}
+
+# expand request by target tracks
+sub addTargetTracks {
+ my ( $mbid, $volume ) = @_;
+
+ my $tracks = {};
+
+ my ( $mbzUrl, $cmd, $xml ) = "";
+ my $args       = "?inc=recordings";
+ my $trackCount = 0;
+
+ # set up the command
+ # https://musicbrainz.org/ws/2/release/9840615c-86a0-495b-a717-1d605e6d7c10?inc=recordings
+ $mbzUrl = $urlBase . "/ws/2/release/";
+ $cmd    = "curl -s " . $mbzUrl . $mbid . $args;
+ $counterTargetTrack++;
+ &dumpToFile( "target-" . $counterTargetTrack . ".cmd", $cmd );    #exit(0);
+
+ # get source recording, cache in case needed more than once
+ if ( !$sourceXML->{$mbid} ) {
+
+  #need to pause between api calls, not needed when running local instance;
+  print( "looking up release: ", $mbid, "\n" );
+  sleep($sleepTime);
+
+  $xml = `$cmd`;
+  $xml =~ s/xmlns/replaced/ig;
+  &dumpToFile( "target-" . $counterTargetTrack . ".xml", $xml );    #exit(0);
+  $sourceXML->{$mbid} = $xml;
+ } else {
+  $xml = $sourceXML->{$mbid};
+ }
+
+ my $dom = XML::LibXML->load_xml( string => $xml );
+
+ foreach my $medium ( $dom->findnodes('/metadata/release/medium-list/medium') ) {
+
+  my $volumeMB = $medium->findvalue('position');
+
+  # not defined volume means all
+  if ( !$volume || $volume == $volumeMB ) {
+
+   # we have volume, find the track count
+   foreach my $trackList ( $medium->findnodes('track-list') ) {
+
+    my $count = $trackList->getAttribute("count");
+    $trackCount = $trackCount + $count;
+   }    # tarck list
+  }    # matching volume
+ }    # mediums
+
+ # we have track countr per volume, let's build a track hash
+
+ for ( my $i = 1; $i <= $trackCount; $i++ ) {
+  $tracks->{ sprintf( "%02d", $i ) } = "";
+ }
+
+ #print Dumper($tracks);exit(0);
+ return $tracks;
+
+}
+
+# number to a sequence of tracks
+sub serializeRange {
+ my ($noOfTracks) = @_;
+
+ my $trackList = "";
+
+ my $counter = 0;
+ for ( my $i = 0; $i < $noOfTracks; $i++ ) {
+  $counter++;
+  $trackList = $trackList . $counter . ",";
+ }
+
+ $trackList = substr( $trackList, 0, length($trackList) - 1 );
+
+ #print Dumper($trackList);
+ #exit(0);
+
+ return $trackList;
 }
 
 ### get mbid for source recordings
@@ -338,8 +470,9 @@ sub getMBRecordingsID {
  my ( $mbid, $sourceVolume, $sourceTracks ) = @_;
 
  my ( $mbzUrl, $cmd, $xml ) = "";
- my $args       = "?inc=recordings";
- my $recordings = {};
+ my $args         = "?inc=recordings";
+ my @recordings   = ();
+ my $trackCounter = 0;
 
  # track list to a hash
  my $tracks = {};
@@ -397,12 +530,17 @@ sub getMBRecordingsID {
 
     my $mbid = $recording->getAttribute("id");
 
-    $recordings->{ sprintf( "%02d", $volume ) }->{ sprintf( "%02d", $trackNo ) } = $mbid;
+    # track number is just a counter
+    $trackCounter++;
+
+    #$recordings->{ sprintf( "%02d", $trackCounter ) } = $mbid;
+    push @recordings, $mbid;
    }    # recording
   }    #tracks
  }    # mediums
 
- return $recordings;
+ #print Dumper(@recordings);exit(0);
+ return @recordings;
 
 }
 
@@ -440,40 +578,47 @@ sub expandRange {
 sub getRequests {
  my ($requests) = @_;
 
+ #print Dumper($requests);
+
  my ( $counterStr, $targetRelease ) = "";
  my $hash         = {};
  my $cloneRequest = {};
- my $counter      = 0;
+ my ( $volume, $counter ) = 0;
 
  foreach my $request ( keys @{ $requests->{"all"} } ) {
   $hash          = $requests->{"all"}[$request];
   $targetRelease = $hash->{"target release"};
 
   # use targe volume as request number for later sort
+  # add a counter as this will allow for multiple instances of the same target volume
   $counter++;
   if ( $hash->{"target volume"} ) {
-   $counterStr = sprintf( "%02d", $hash->{"target volume"} );
-   $hash->{"target volume"} = $counterStr;
+   $volume     = sprintf( "%02d", $hash->{"target volume"} );
+   $counterStr = sprintf( "%02d", $counter );
+   $hash->{"target volume"} = $volume;
 
   } else {
    print( "your target volume is blank, 1 volume", " cloning can be handled when creating a release. ", $hash->{"target volume"}, "\n" );
    exit(0);
   }
 
-  $cloneRequest->{$targetRelease}->{$counterStr}->{"target"}->{"volume"}  = $hash->{"target volume"};
-  $cloneRequest->{$targetRelease}->{$counterStr}->{"target"}->{"tracks"}  = $hash->{"target tracks"};
-  $cloneRequest->{$targetRelease}->{$counterStr}->{"source"}->{"release"} = $hash->{"source release"};
-  $cloneRequest->{$targetRelease}->{$counterStr}->{"source"}->{"volume"}  = $hash->{"source volume"};
-  $cloneRequest->{$targetRelease}->{$counterStr}->{"source"}->{"tracks"}  = $hash->{"source tracks"};
+  my $sourceRelease = $hash->{"source release"};
+
+  $cloneRequest->{$targetRelease}->{"volume"}->{$volume}->{"request"}->{$counterStr}->{"target"}->{"tracks"}              = $hash->{"target tracks"};
+  $cloneRequest->{$targetRelease}->{"volume"}->{$volume}->{"request"}->{$counterStr}->{"target"}->{"source"}->{"volume"}  = $hash->{"source volume"};
+  $cloneRequest->{$targetRelease}->{"volume"}->{$volume}->{"request"}->{$counterStr}->{"target"}->{"source"}->{"tracks"}  = $hash->{"source tracks"};
+  $cloneRequest->{$targetRelease}->{"volume"}->{$volume}->{"request"}->{$counterStr}->{"target"}->{"source"}->{"release"} = $hash->{"source release"};
+
  }
 
  my $targetReleaseKeys = keys %{$cloneRequest};
  if ( $targetReleaseKeys > 1 ) {
-  print( "your clone request has ", $targetReleaseKeys, " release tagets, only 1 is allowed.", "\n" );
+  print( "your clone request has ", $targetReleaseKeys, " release targets, only 1 is allowed.", "\n" );
   print Dumper($cloneRequest);
   exit(0);
  }
 
+ #print Dumper($cloneRequest);exit;
  return ( $cloneRequest, $targetRelease );
 
 }
