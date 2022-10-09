@@ -47,7 +47,9 @@ my ( $base, $dir1, $ext ) = fileparse( $discogsUrl, '\.*' );
 my @arr        = split( "-", $base );
 my $urlForForm = $discogsUrl;
 $discogsUrl = $arr[0];
-print( "discogs release for API call ", $discogsUrl, "\n" );
+if ($discogsUrl) {
+ print( "discogs release for API call ", $discogsUrl, "\n" );
+}
 
 if ( !$discogsUrl ) {
  print( "please provide release id --release", "\n" );
@@ -261,8 +263,8 @@ sub writeRelationshipPersistentSerialHash {
 sub editNote {
  my ($albumUrl) = @_;
 
- my $crlf = chr(10).chr(13);
- my $editNote = $albumUrl .$crlf. "discogs.pl Classical Music Uploader" .$crlf. "https://github.com/nadl40/mbnz-release";
+ my $crlf     = chr(10) . chr(13);
+ my $editNote = $albumUrl . $crlf . "discogs.pl Classical Music Uploader" . $crlf . "https://github.com/nadl40/mbnz-release";
 
  $htmlPart = '<input type="hidden" name="edit_note" value="' . "from " . $editNote . '">' . "\n";
 

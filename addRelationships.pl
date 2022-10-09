@@ -163,7 +163,7 @@ foreach my $type ( keys %{$hashRel} ) {
 $note->send_keys($noteText);
 
 # quit manually as this gives time on long or problematic releases
-#sleep 300;
+sleep 3000;
 #$driver->quit();
 
 #************************************************
@@ -476,7 +476,7 @@ sub addCreditedAs {
 sub prepSelection {
  my ( $volumes, $batchAddButton, $recordingsSelectedCheckBox, $trackSelectorRef, $tracksRef ) = @_;
 
- print Dumper(@tracks);
+ #print Dumper(@tracks);
 
  my @tracks        = @{$tracksRef};
  my @trackSelector = @{$trackSelectorRef};

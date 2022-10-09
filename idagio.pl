@@ -154,6 +154,10 @@ while ( my $line = <$fh> ) {
  if ( $line =~ m/window.__data__/i ) {
   my @arr  = split( " = ", $line );
   my $data = substr( $arr[1], 0, length( $arr[1] ) - 1 );
+  
+  # print to file
+  &dumpToFile( "data.json", $data );exit;
+
 
   my $idagio = JSON->new->utf8->decode($data);
   &writeHash( "release.txt", $idagio );
