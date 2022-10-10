@@ -116,7 +116,7 @@ my @trackSelector = ();
 
 # Note
 my $crlf     = chr(10) . chr(13);
-my $noteText = "addRelationships.pl Classical Music Uploader" . $crlf . "https://github.com/nadl40/mbnz-release";
+my $noteText = $hashRel->{"url"}.$crlf."addRelationships.pl Classical Music Uploader" . $crlf . "https://github.com/nadl40/mbnz-release";
 $element = wait_until { $driver->find_element_by_class_name('editnote') };
 my $note = wait_until { $driver->find_child_element( $element, './div/textarea' ) };
 
@@ -147,7 +147,7 @@ foreach my $workAdd (@works) {
 foreach my $type ( keys %{$hashRel} ) {
 
  #print Dumper($type);
- if ( $type ne "works" && $type ne "volumes" ) {
+ if ( $type ne "volume" && $type ne "url" && $type ne "works"   ) {
   &addCredits( $hashRel->{"volumes"}, $type, $driver, $hashRel->{$type}, $batchAdd, $recordingsSelected, @trackSelector );
  }
 }
@@ -435,7 +435,7 @@ sub addArtistRel {
    my $child   = wait_until { $driver->find_child_element( $element, './span[@class="autocomplete"]' ) };
    my $child1  = wait_until { $driver->find_child_element( $child,   './input[@class="ui-autocomplete-input"]' ) };
 
-   if ( $artist->{"instrument"}->{"id"} ) {
+   if ( $artist->{"instrument"}->{$instrument}->{"id"} ) {
     wait_until { $child1->send_keys( $artist->{"instrument"}->{$instrument}->{"id"} ) };
     sleep(WAIT_FOR_MB);
    } else {

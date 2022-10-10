@@ -236,6 +236,7 @@ $htmlForm = $htmlForm . '<script>document.forms[0].submit()</script>' . "\n";
 &dumpToFile( "form.html", $htmlForm );
 
 #need to write a file for relationship add
+$data->{"url"}=$discogs->{"url"}; 
 &writeRelationshipPersistentSerialHash( 'relationshipsSerial.txt', $data );
 
 #open in default browser
@@ -254,7 +255,7 @@ if ( $launchBrowser eq 'y' ) {
 
 # write a serial relationship hash in the order of tracks, in an array of hashes.
 sub writeRelationshipPersistentSerialHash {
- my ( $fileName, $recordings ) = @_;
+ my ($fileName, $recordings ) = @_;
 
  &writeHash( $fileName, $recordings );
 

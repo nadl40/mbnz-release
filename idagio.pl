@@ -240,6 +240,7 @@ while ( my $line = <$fh> ) {
 
   # create a diff persistent hash for a relationship webdriver
   my $relationshipHashSerial = &getRelationshipsByTracks( $trackHash, $trackSeq, $idagio->{"entities"}, @releaseCredit );
+  $relationshipHashSerial->{"url"}=$idagioUrl;
   &writeRelationshipPersistentSerialHash( 'relationshipsSerial.txt', $relationshipHashSerial );
 
  }    # end of json data
