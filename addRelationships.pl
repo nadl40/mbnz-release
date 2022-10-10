@@ -32,6 +32,7 @@ use lib dirname( dirname abs_path $0) . '/mbnz/lib';
 use Rels::Utils qw(readConfig);
 
 $| = 1;
+binmode( STDOUT, "encoding(UTF-8)" );
 
 # set constant for sleep in seconds
 use constant WAIT_FOR_MB => '1.5';
@@ -114,8 +115,8 @@ my ( $element, $recording, $recordingSelector ) = "";
 my @trackSelector = ();
 
 # Note
-my $crlf = chr(10).chr(13);
-my $noteText = "addRelationships.pl Classical Music Uploader" .$crlf. "https://github.com/nadl40/mbnz-release";
+my $crlf     = chr(10) . chr(13);
+my $noteText = "addRelationships.pl Classical Music Uploader" . $crlf . "https://github.com/nadl40/mbnz-release";
 $element = wait_until { $driver->find_element_by_class_name('editnote') };
 my $note = wait_until { $driver->find_child_element( $element, './div/textarea' ) };
 
@@ -154,7 +155,7 @@ foreach my $type ( keys %{$hashRel} ) {
 # loop for work
 foreach my $type ( keys %{$hashRel} ) {
 
- if ( $type eq "works" ) {
+ if ( $type eq "works" ) {    #
   &addWorks( $driver, $hashRel->{$type}, @workSelector );
  }
 }
@@ -164,6 +165,7 @@ $note->send_keys($noteText);
 
 # quit manually as this gives time on long or problematic releases
 sleep 3000;
+
 #$driver->quit();
 
 #************************************************
@@ -211,240 +213,275 @@ sub addCredits {
  foreach my $artistId ( keys %{$artists} ) {
 
   #print Dumper( $artistId );
-  #print Dumper( $artists->{$artistId} );exit;
-  print( "\n", $type, "->", $artistId, "->", $artists->{$artistId}->{"name"}, "\n" );
+  #print Dumper( $artists->{$artistId} );#exit;
 
-  @tracks = @{ $artists->{$artistId}->{"tracks"} };
+  # artists can have multiple insruments
+
+  print( "\n", $type, "->", $artists->{$artistId}->{"name"}, "\n" );
+
+  #exit(0);
+  #exit;
 
   ### venue ###
   if ( $type eq 'venue' ) {
 
-   #print( "venue ", $artistId, "\n" );
-   &prepSelection( $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector, \@tracks );
-   &addVenueRel( $driver, $artists->{$artistId} );
+   &addVenueRel( $driver, $artists->{$artistId}, $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector );
   }
 
   ### ensembles ###
   if ( $type =~ m/(ensembles|ensemble)/i ) {
 
    #print( "ensemble ", $artistId, "\n" );
-   &prepSelection( $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector, \@tracks );
-   &addEnsembleRel( $driver, $artists->{$artistId} );
+   &addEnsembleRel( $driver, $artists->{$artistId}, $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector );
   }
 
   ### conductor ###
   if ( $type eq 'conductor' ) {
 
    #print( "conductor ", $artistId, "\n" );
-   &prepSelection( $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector, \@tracks );
-   &addConductorRel( $driver, $artists->{$artistId} );
+   &addConductorRel( $driver, $artists->{$artistId}, $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector );
   }
 
   ### soloists ###
   if ( $type =~ m/(soloists|soloist)/i ) {
 
-   #print( "artistId ", $artistId, "\n" );
-   &prepSelection( $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector, \@tracks );
-   &addArtistRel( $driver, $artists->{$artistId} );
+   &addArtistRel( $driver, $artists->{$artistId}, $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector );
   }
 
- }
+ }    # artist
 
 }
 
 ### add venues attributes ###
 sub addVenueRel {
- my ( $driver, $artist ) = @_;
+ my ( $driver, $artist, $volumes, $batchAddButton, $recordingsSelectedCheckBox, $trackSelectorRef ) = @_;
 
- my $selected = "";
+ my @trackSelector = @{$trackSelectorRef};
 
- wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Place");
- sleep(WAIT_FOR_MB);
- wait_until { $driver->find_element_by_class('link-type') }->send_keys("recorded-at");
- sleep(WAIT_FOR_MB);
+ foreach my $tracks ( keys %{ $artist->{"venue"} } ) {
 
- if ( $artist->{"id"} ) {
-  wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"id"} );
+  my @tracks = @{ $artist->{"venue"}->{$tracks}->{"tracks"} };
+
+  &prepSelection( $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector, @tracks );
+
+  my $selected = "";
+
+  wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Place");
   sleep(WAIT_FOR_MB);
- } else {
-  wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"name"} );
+  wait_until { $driver->find_element_by_class('link-type') }->send_keys("recorded-at");
   sleep(WAIT_FOR_MB);
-  $driver->send_keys_to_active_element( KEYS->{'enter'} );
- }
 
- my $dateEntered = 0;
- if ( $artist->{"recording_date"}->{"year"} ) {
-  my $element = wait_until { $driver->find_element_by_class_name('partial-date') };
-  my $child   = wait_until { $driver->find_child_element( $element, './input[@placeholder="YYYY"]' ) };
-  $child->send_keys( $artist->{"recording_date"}->{"year"} );
-  $dateEntered = 1;
- }
+  if ( $artist->{"id"} ) {
+   wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"id"} );
+   sleep(WAIT_FOR_MB);
+  } else {
+   wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"name"} );
+   sleep(WAIT_FOR_MB);
+   $driver->send_keys_to_active_element( KEYS->{'enter'} );
+  }
 
- if ( $artist->{"recording_date"}->{"month"} ) {
-  my $element = wait_until { $driver->find_element_by_class_name('partial-date') };
-  my $child   = wait_until { $driver->find_child_element( $element, './input[@placeholder="MM"]' ) };
-  $child->send_keys( $artist->{"recording_date"}->{"month"} );
- }
+  my $dateEntered = 0;
+  if ( $artist->{"recording_date"}->{"year"} ) {
+   my $element = wait_until { $driver->find_element_by_class_name('partial-date') };
+   my $child   = wait_until { $driver->find_child_element( $element, './input[@placeholder="YYYY"]' ) };
+   $child->send_keys( $artist->{"recording_date"}->{"year"} );
+   $dateEntered = 1;
+  }
 
- if ( $artist->{"recording_date"}->{"day"} ) {
-  my $element = wait_until { $driver->find_element_by_class_name('partial-date') };
-  my $child   = wait_until { $driver->find_child_element( $element, './input[@placeholder="DD"]' ) };
-  $child->send_keys( $artist->{"recording_date"}->{"day"} );
- }
+  if ( $artist->{"recording_date"}->{"month"} ) {
+   my $element = wait_until { $driver->find_element_by_class_name('partial-date') };
+   my $child   = wait_until { $driver->find_child_element( $element, './input[@placeholder="MM"]' ) };
+   $child->send_keys( $artist->{"recording_date"}->{"month"} );
+  }
 
- #now copy to end date unless we have end dates, idagio does not seems to have it
- if ( $dateEntered == 1 ) {
-  my $element = wait_until { $driver->find_element_by_class_name('partial-date') };
-  my $child   = wait_until { $driver->find_child_element( $element, './button[@title="Copy to end date"]' ) };
-  $child->click();
- }
+  if ( $artist->{"recording_date"}->{"day"} ) {
+   my $element = wait_until { $driver->find_element_by_class_name('partial-date') };
+   my $child   = wait_until { $driver->find_child_element( $element, './input[@placeholder="DD"]' ) };
+   $child->send_keys( $artist->{"recording_date"}->{"day"} );
+  }
 
- &clickSave( $driver, WAIT_FOR_MB_SAVE );
+  #now copy to end date unless we have end dates, idagio does not seems to have it
+  if ( $dateEntered == 1 ) {
+   my $element = wait_until { $driver->find_element_by_class_name('partial-date') };
+   my $child   = wait_until { $driver->find_child_element( $element, './button[@title="Copy to end date"]' ) };
+   $child->click();
+  }
+
+  &clickSave( $driver, WAIT_FOR_MB_SAVE );
+
+  #}
+
+ }
 
 }
 
 ### add ensemble attributes ###
 sub addEnsembleRel {
- my ( $driver, $artist ) = @_;
+ my ( $driver, $artist, $volumes, $batchAddButton, $recordingsSelectedCheckBox, $trackSelectorRef ) = @_;
 
- my $selected = "";
+ my @trackSelector = @{$trackSelectorRef};
 
- wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Artist");
- sleep(WAIT_FOR_MB);
- wait_until { $driver->find_element_by_class('link-type') }->send_keys("orchestra");
- sleep(WAIT_FOR_MB);
+ foreach my $instrument ( keys %{ $artist->{"instrument"} } ) {
 
- if ( $artist->{"id"} ) {
-  wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"id"} );
+  my @tracks = @{ $artist->{"instrument"}->{$instrument}->{"tracks"} };
+
+  &prepSelection( $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector, @tracks );
+
+  my $selected = "";
+
+  wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Artist");
   sleep(WAIT_FOR_MB);
- } else {
-  wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"name"} );
+  wait_until { $driver->find_element_by_class('link-type') }->send_keys("orchestra");
   sleep(WAIT_FOR_MB);
-  $driver->send_keys_to_active_element( KEYS->{'enter'} );
+
+  if ( $artist->{"id"} ) {
+   wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"id"} );
+   sleep(WAIT_FOR_MB);
+  } else {
+   wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"name"} );
+   sleep(WAIT_FOR_MB);
+   $driver->send_keys_to_active_element( KEYS->{'enter'} );
+  }
+
+  my $return = &addCreditedAs( $driver, $artist->{"name"} );
+
+  &clickSave( $driver, WAIT_FOR_MB_SAVE );
+
  }
-
- my $return = &addCreditedAs( $driver, $artist->{"name"} );
-
- &clickSave( $driver, WAIT_FOR_MB_SAVE );
-
 }
 
 ### add conductor attributes ###
 sub addConductorRel {
- my ( $driver, $artist ) = @_;
+ my ( $driver, $artist, $volumes, $batchAddButton, $recordingsSelectedCheckBox, $trackSelectorRef ) = @_;
 
  #print Dumper($artist);
 
- #exit;
+ my @trackSelector = @{$trackSelectorRef};
 
- my $selected = "";
+ foreach my $instrument ( keys %{ $artist->{"instrument"} } ) {
 
- wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Artist");
- sleep(WAIT_FOR_MB);
- wait_until { $driver->find_element_by_class('link-type') }->send_keys("conductor");
- sleep(WAIT_FOR_MB);
+  my @tracks = @{ $artist->{"instrument"}->{$instrument}->{"tracks"} };
 
- if ( $artist->{"id"} ) {
-  wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"id"} );
+  &prepSelection( $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector, @tracks );
+
+  #exit;
+  my $selected = "";
+
+  wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Artist");
   sleep(WAIT_FOR_MB);
- } else {
-  wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"name"} );
+  wait_until { $driver->find_element_by_class('link-type') }->send_keys("conductor");
   sleep(WAIT_FOR_MB);
-  $driver->send_keys_to_active_element( KEYS->{'enter'} );
+
+  if ( $artist->{"id"} ) {
+   wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"id"} );
+   sleep(WAIT_FOR_MB);
+  } else {
+   wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"name"} );
+   sleep(WAIT_FOR_MB);
+   $driver->send_keys_to_active_element( KEYS->{'enter'} );
+  }
+
+  my $return = &addCreditedAs( $driver, $artist->{"name"} );
+
+  &clickSave( $driver, WAIT_FOR_MB_SAVE );
+
  }
-
- my $return = &addCreditedAs( $driver, $artist->{"name"} );
-
- &clickSave( $driver, WAIT_FOR_MB_SAVE );
-
 }
 
 ### add artist attributes ###
 sub addArtistRel {
- my ( $driver, $artist ) = @_;
 
- #print Dumper($artist);
+ my ( $driver, $artist, $volumes, $batchAddButton, $recordingsSelectedCheckBox, $trackSelectorRef ) = @_;
 
- #exit;
+ my @trackSelector = @{$trackSelectorRef};
 
- my $selected = "";
+ # artists can have multiple instruments per track, common in non Classical
+ foreach my $instrument ( keys %{ $artist->{"instrument"} } ) {
 
- wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Artist");
- sleep(WAIT_FOR_MB);
+  my @tracks = @{ $artist->{"instrument"}->{$instrument}->{"tracks"} };
 
- # try to handle vocals
- my $creditType = "";
- if ( $artist->{"instrument"}->{"keystrokes"} ) {
-  $creditType = "vocal";
-  wait_until { $driver->find_element_by_class('link-type') }->send_keys("vocals");
+  &prepSelection( $volumes, $batchAddButton, $recordingsSelectedCheckBox, \@trackSelector, @tracks );
+
+  my $selected = "";
+
+  wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Artist");
   sleep(WAIT_FOR_MB);
- } else {
-  $creditType = "instrument";
-  wait_until { $driver->find_element_by_class('link-type') }->send_keys("instruments");
-  sleep(WAIT_FOR_MB);
- }
 
- if ( $artist->{"id"} ) {
-  wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"id"} );
-  sleep(WAIT_FOR_MB);
- } else {
-  wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"name"} );
-  sleep(WAIT_FOR_MB);
-  $driver->send_keys_to_active_element( KEYS->{'enter'} );
- }
-
- my $return = &addCreditedAs( $driver, $artist->{"name"} );
-
- if ( $creditType eq "instrument" ) {
-  my $element = wait_until { $driver->find_element_by_class('instrument-selection-credit') };
-  my $child   = wait_until { $driver->find_child_element( $element, './span[@class="autocomplete"]' ) };
-  my $child1  = wait_until { $driver->find_child_element( $child,   './input[@class="ui-autocomplete-input"]' ) };
-
-  if ( $artist->{"instrument"}->{"id"} ) {
-   wait_until { $child1->send_keys( $artist->{"instrument"}->{"id"} ) };
+  # try to handle vocals
+  my $creditType = "";
+  if ( $artist->{"instrument"}->{$instrument}->{"keystrokes"} ) {
+   $creditType = "vocal";
+   wait_until { $driver->find_element_by_class('link-type') }->send_keys("vocals");
    sleep(WAIT_FOR_MB);
   } else {
-   wait_until { $child1->send_keys( $artist->{"instrument"}->{"name"} ) };
+   $creditType = "instrument";
+   wait_until { $driver->find_element_by_class('link-type') }->send_keys("instruments");
    sleep(WAIT_FOR_MB);
+  }
+
+  if ( $artist->{"id"} ) {
+   wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"id"} );
+   sleep(WAIT_FOR_MB);
+  } else {
+   wait_until { $driver->find_element_by_class('name') }->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
    $driver->send_keys_to_active_element( KEYS->{'enter'} );
   }
- }
 
- # vocal
- if ( $creditType eq "vocal" ) {
+  my $return = &addCreditedAs( $driver, $artist->{"name"} );
 
-  if ( $artist->{"instrument"}->{"keystrokes"} ) {
+  if ( $creditType eq "instrument" ) {
+   my $element = wait_until { $driver->find_element_by_class('instrument-selection-credit') };
+   my $child   = wait_until { $driver->find_child_element( $element, './span[@class="autocomplete"]' ) };
+   my $child1  = wait_until { $driver->find_child_element( $child,   './input[@class="ui-autocomplete-input"]' ) };
 
-   my $element = wait_until { $driver->find_element_by_class('multiselect-input') };
-
-   #wait_until { $element->send_keys( lc($recording->{$artistId}->{"instrument"} . " vocals" )) };
-   wait_until { $element->send_keys(" ") };
-   sleep(WAIT_FOR_MB);
-   sleep(WAIT_FOR_MB);
-   my $j = $artist->{"instrument"}->{"keystrokes"};
-   for ( my $i = 0; $i <= $j; $i++ ) {
-    $driver->send_keys_to_active_element( KEYS->{'down_arrow'} );
-
-    #sleep(1);
+   if ( $artist->{"instrument"}->{"id"} ) {
+    wait_until { $child1->send_keys( $artist->{"instrument"}->{$instrument}->{"id"} ) };
+    sleep(WAIT_FOR_MB);
+   } else {
+    wait_until { $child1->send_keys( $artist->{"instrument"}->{$instrument}->{"name"} ) };
+    sleep(WAIT_FOR_MB);
+    sleep(WAIT_FOR_MB);
+    $driver->send_keys_to_active_element( KEYS->{'enter'} );
    }
+  }
 
-   $driver->send_keys_to_active_element( KEYS->{'enter'} );
+  # vocal
+  if ( $creditType eq "vocal" ) {
 
-   #sleep(10);
+   if ( $artist->{"instrument"}->{$instrument}->{"keystrokes"} ) {
 
-  } else {
+    my $element = wait_until { $driver->find_element_by_class('multiselect-input') };
 
-   # exit to alert that vocal keystrokes are missing, helps to build the list
-   print( "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",      "\n" );
-   print( "there are no selection keystrokes for ", $artist->{"instrument"}->{"name"}, " exit.", "\n" );
-   print( "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",      "\n" );
-   exit(0);
-  }    # keystrokes
+    #wait_until { $element->send_keys( lc($recording->{$artistId}->{"instrument"} . " vocals" )) };
+    wait_until { $element->send_keys(" ") };
+    sleep(WAIT_FOR_MB);
+    sleep(WAIT_FOR_MB);
+    my $j = $artist->{"instrument"}->{$instrument}->{"keystrokes"};
+    for ( my $i = 0; $i <= $j; $i++ ) {
+     $driver->send_keys_to_active_element( KEYS->{'down_arrow'} );
 
- }    # end of vocal
+     #sleep(1);
+    }
 
- &clickSave( $driver, WAIT_FOR_MB_SAVE );
+    $driver->send_keys_to_active_element( KEYS->{'enter'} );
+
+    #sleep(10);
+
+   } else {
+
+    # exit to alert that vocal keystrokes are missing, helps to build the list
+    print( "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",      "\n" );
+    print( "there are no selection keystrokes for ", $artist->{"instrument"}->{$instrument}->{"name"}, " exit.", "\n" );
+    print( "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",      "\n" );
+    exit(0);
+   }    # keystrokes
+
+  }    # end of vocal
+
+  &clickSave( $driver, WAIT_FOR_MB_SAVE );
+
+ }    #instrument
 
 }
 
@@ -474,12 +511,14 @@ sub addCreditedAs {
 
 ### select all releavant tracks
 sub prepSelection {
- my ( $volumes, $batchAddButton, $recordingsSelectedCheckBox, $trackSelectorRef, $tracksRef ) = @_;
+ my ( $volumes, $batchAddButton, $recordingsSelectedCheckBox, $trackSelectorRef, @tracks ) = @_;
 
- #print Dumper(@tracks);
+ #print Dumper(@tracks);exit;
 
- my @tracks        = @{$tracksRef};
+ #my @tracks        = @{$tracksRef};
  my @trackSelector = @{$trackSelectorRef};
+
+ #print Dumper(\@tracks);exit(0);
 
  # reset track selection
  $recordingsSelectedCheckBox->click();

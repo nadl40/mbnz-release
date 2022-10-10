@@ -154,10 +154,9 @@ while ( my $line = <$fh> ) {
  if ( $line =~ m/window.__data__/i ) {
   my @arr  = split( " = ", $line );
   my $data = substr( $arr[1], 0, length( $arr[1] ) - 1 );
-  
+
   # print to file
   #&dumpToFile( "data.json", $data );exit;
-
 
   my $idagio = JSON->new->utf8->decode($data);
   &writeHash( "release.txt", $idagio );
@@ -324,7 +323,7 @@ sub getRelationshipsByTracks {
 
       if ($venueId) {
        $hash->{$entity}->{$venueId}->{"name"} = $venueName;
-       push @{ $hash->{$entity}->{$venueId}->{"tracks"} }, $track;
+       push @{ $hash->{$entity}->{$venueId}->{"venue"}->{"venue"}->{"tracks"} }, $track;
 
        my $placeName = $hash->{$entity}->{$venueId}->{"name"};
 
@@ -354,7 +353,7 @@ sub getRelationshipsByTracks {
       if ($personId) {
        $hash->{$entity}->{$personId}->{"name"} = $persons->{$personId}->{"name"};
        $hash->{$entity}->{$personId}->{"id"}   = $persons->{$personId}->{"id"};
-       push @{ $hash->{$entity}->{$personId}->{"tracks"} }, $track;
+       push @{ $hash->{$entity}->{$personId}->{"venue"}->{"n/a"}->{"tracks"} }, $track;
 
       }
 
@@ -375,17 +374,19 @@ sub getRelationshipsByTracks {
         $hash->{"soloists"}->{$personId}->{"name"} = $ensembles->{$ensembleId}->{"name"};
         $hash->{"soloists"}->{$personId}->{"id"}   = $ensembles->{$ensembleId}->{"id"};
 
-        $hash->{"soloists"}->{$personId}->{"instrument"}->{"name"}         = $ensembles->{$ensembleId}->{"chorus"};
-        $hash->{"soloists"}->{$personId}->{"instrument"}->{"keystrokes"}   = $ensembles->{$ensembleId}->{"keystrokes"};
-        $hash->{"soloists"}->{$personId}->{"instrument"}->{"instrumentId"} = '';
+        my $instrument = $ensembles->{$ensembleId}->{"chorus"};
+        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"name"}         = $ensembles->{$ensembleId}->{"chorus"};
+        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"}   = $ensembles->{$ensembleId}->{"keystrokes"};
+        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"instrumentId"} = '';
 
-        push @{ $hash->{"soloists"}->{$personId}->{"tracks"} }, $track;
+        push @{ $hash->{"soloists"}->{$personId}->{"instrument"}->{"n/a"}->{"tracks"} }, $track;
 
        } else {
 
+        my $instrument = $ensembles->{$ensembleId}->{"chorus"};
         $hash->{$entity}->{$ensembleId}->{"name"} = $ensembles->{$ensembleId}->{"name"};
         $hash->{$entity}->{$ensembleId}->{"id"}   = $ensembles->{$ensembleId}->{"id"};
-        push @{ $hash->{$entity}->{$personId}->{"tracks"} }, $track;
+        push @{ $hash->{$entity}->{$personId}->{"instrument"}->{"n/a"}->{"tracks"} }, $track;
        }
       }
 
@@ -406,11 +407,12 @@ sub getRelationshipsByTracks {
        $hash->{$entity}->{$personId}->{"name"} = $persons->{$personId}->{"name"};
        $hash->{$entity}->{$personId}->{"id"}   = $persons->{$personId}->{"id"};
 
-       $hash->{$entity}->{$personId}->{"instrument"}->{"id"}         = $instruments->{$instrumentId}->{"id"};
-       $hash->{$entity}->{$personId}->{"instrument"}->{"name"}       = $instruments->{$instrumentId}->{"name"};
-       $hash->{$entity}->{$personId}->{"instrument"}->{"keystrokes"} = $instruments->{$instrumentId}->{"keystrokes"};
+       my $instrument = $instruments->{$instrumentId}->{"name"};
+       $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"id"}         = $instruments->{$instrumentId}->{"id"};
+       $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"name"}       = $instruments->{$instrumentId}->{"name"};
+       $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"} = $instruments->{$instrumentId}->{"keystrokes"};
 
-       push @{ $hash->{$entity}->{$personId}->{"tracks"} }, $track;
+       push @{ $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"tracks"} }, $track;
 
       }
      }
@@ -1035,8 +1037,8 @@ sub getPieceData {
 sub editNote {
  my ($albumUrl) = @_;
 
- my $crlf = chr(10).chr(13);
- my $editNote = $albumUrl .$crlf. "idagio.pl Classical Music Uploader" .$crlf. "https://github.com/nadl40/mbnz-release";
+ my $crlf     = chr(10) . chr(13);
+ my $editNote = $albumUrl . $crlf . "idagio.pl Classical Music Uploader" . $crlf . "https://github.com/nadl40/mbnz-release";
 
  $htmlPart = '<input type="hidden" name="edit_note" value="' . "from " . $editNote . '">' . "\n";
 

@@ -92,6 +92,7 @@ my $mainWorkXML = {};
 &delExtension("cmd");
 
 my %keystrokesMap = (
+ "lead vocals"          => 1,
  "alto vocals"          => 2,
  "baritone vocals"      => 3,
  "contralto vocals"     => 4,
@@ -104,7 +105,6 @@ my %keystrokesMap = (
  "tenor vocals"         => 11
 );
 
-#print Dumper ($discogsUrl);
 
 # first call get discogs same as mbnz.pl so the hash is ready for use
 # its problematic to create a pm, maybe later, for now just do an exec and read in the release hash
@@ -197,6 +197,9 @@ if ($htmlPart) {
 # use more comlpex example https://www.discogs.com/release/7527637-Richter-Rarities-With-Orchestra
 my $data = &setArtists( $discogs->{"tracks"} );
 
+#print Dumper($data);
+#exit;
+
 # add release works
 &setWorks( $discogs->{"tracks"}, $data );
 
@@ -253,8 +256,6 @@ if ( $launchBrowser eq 'y' ) {
 sub writeRelationshipPersistentSerialHash {
  my ( $fileName, $recordings ) = @_;
 
- #print Dumper($recordings);exit;
-
  &writeHash( $fileName, $recordings );
 
 }
@@ -276,7 +277,6 @@ sub editNote {
 sub albumTracks {
  my ( $discogs, $data, $media ) = @_;
 
- #print Dumper($discogs);
  my $trackNo = 0;
 
  my $tracks = {};
@@ -332,7 +332,6 @@ sub albumTracks {
 
  }    # end of track
 
- #print Dumper($tracks);#exit;
  my $html = &formatTracksForm( $tracks, $media );
 
  #print Dumper($htmlForm);
@@ -345,6 +344,10 @@ sub albumTracks {
 # format html for tracks
 sub formatTracksForm {
  my ( $trackHash, $media ) = @_;
+
+ #print Dumper( $trackHash, $media );
+
+ #exit(0);
 
  # replace
  $media =~ s/Box Set/CD/ig;
@@ -392,22 +395,26 @@ sub formatTracksForm {
     . $trackCount
     . '.name" value="'
     . $trackHash->{$track}->{"title"} . '">' . "\n";
-  $htmlForm =
-      $htmlForm
-    . '<input type="hidden" name="mediums.'
-    . $mediaCount
-    . '.track.'
-    . $trackCount
-    . '.artist_credit.names.0.name" value="'
-    . $trackHash->{$track}->{"composer"}->{"name"} . '">' . "\n";
-  $htmlForm =
-      $htmlForm
-    . '<input type="hidden" name="mediums.'
-    . $mediaCount
-    . '.track.'
-    . $trackCount
-    . '.artist_credit.names.0.mbid" value="'
-    . $trackHash->{$track}->{"composer"}->{"id"} . '">' . "\n";
+
+  # we don't always have a comoser ...
+  if ( $trackHash->{$track}->{"composer"}->{"name"} ) {
+   $htmlForm =
+       $htmlForm
+     . '<input type="hidden" name="mediums.'
+     . $mediaCount
+     . '.track.'
+     . $trackCount
+     . '.artist_credit.names.0.name" value="'
+     . $trackHash->{$track}->{"composer"}->{"name"} . '">' . "\n";
+   $htmlForm =
+       $htmlForm
+     . '<input type="hidden" name="mediums.'
+     . $mediaCount
+     . '.track.'
+     . $trackCount
+     . '.artist_credit.names.0.mbid" value="'
+     . $trackHash->{$track}->{"composer"}->{"id"} . '">' . "\n";
+  }
   $htmlForm =
       $htmlForm
     . '<input type="hidden" name="mediums.'
@@ -424,6 +431,7 @@ sub formatTracksForm {
  }
 
  &dumpToFile( "track list.txt", $list );
+
  return $htmlForm;
 }
 
@@ -489,9 +497,6 @@ sub formatHtmlForCredit {
 
  foreach my $credit (@releaseCredit) {
 
-  #print Dumper($credit);exit;
-  #foreach my $creditType ( keys %{$credit} ) {
-
   if ( $credit->{"role"} eq $type ) {
 
    $htmlString = '<input type="hidden" name="artist_credit.names.' . $i . '.name" value="' . $credit->{"credited"} . '">' . "\n";
@@ -509,8 +514,6 @@ sub formatHtmlForCredit {
  }    # end of credits
 
  # if composer, replace last joinphrase
- #my $htmlWork=$htmlFom;
- #print Dumper($htmlForm);exit;
  if ( $type eq "composer" && $htmlForm ) {
   $htmlForm = substr( $htmlForm, 0, length($htmlForm) - 5 ) . "; " . '">' . "\n";
  }
@@ -718,22 +721,6 @@ sub setArtists {
 
  #print Dumper($tracks);exit;
 
- #loop thru tracks and get artist array
- #we have 4 groups for relationship add
- # conductor
- # ensembles
- # soloist
- # venue	I don't think Discogs has it as a db field, free text only ?
- # composer
- # work
-
- #  foreach my $track ( keys %{$tracks}) {
- #  	     my $work = $tracks->{$track}->{"work"};
- #         $works->{$work}="";
- #}
- # print Dumper($works);
- # exit;
-
  # create a hash with each, add tracks
  my $artistWork = "";
  my $foundIt    = "";
@@ -789,16 +776,24 @@ sub setArtists {
  # get main works mbnz id
 
  # score participation of all execept composers
+ # unique tracks
  #print Dumper($numberOfTracks);
  my $size = 0;
  foreach my $type ( keys %{$data} ) {
   if ( $type ne "composer" ) {
    foreach my $artist ( keys %{ $data->{$type} } ) {
-    $size = @{ $data->{$type}->{$artist}->{"tracks"} };
 
-    #print Dumper($size);
-    $data->{$type}->{$artist}->{"participation"} = $size / $numberOfTracks;
-   }
+    my $noOfInstruments = 0;
+    $size = 0;
+    foreach my $instrument ( keys %{ $data->{$type}->{$artist}->{"instrument"} } ) {
+
+     $size = $size + @{ $data->{$type}->{$artist}->{"instrument"}->{$instrument}->{"tracks"} };
+     $noOfInstruments++;
+    }    # instruments
+
+    $data->{$type}->{$artist}->{"participation"} = ( $size / $noOfInstruments ) / $numberOfTracks;
+
+   }    # artist
   }
  }
 
@@ -812,73 +807,75 @@ sub setArtists {
 }
 
 # populate hash with artists
+# one artist can play more than one instrument
 sub populateHash {
  my ( $type, $artist, $track, $data ) = @_;
 
  my ( $mbid, $artistName, $instrumentName ) = "";
  my $artistWork = trim( substr( $artist, 0, index( $artist, "\(" ) ) );
 
- if ( !$data->{$type}->{$artistWork}->{"name"} ) {
+ #print( "looking up: ", $artistWork, "\n" );
+ ( $mbid, $artistName ) = &getArtistMbid($artistWork);
 
-  #print( "looking up: ", $artistWork, "\n" );
-  ( $mbid, $artistName ) = &getArtistMbid($artistWork);
+ # don't use mb name
+ $data->{$type}->{$artistWork}->{"name"} = $artistWork;
+ $data->{$type}->{$artistWork}->{"id"}   = $mbid;
 
-  # don't use mb name
-  $data->{$type}->{$artistWork}->{"name"} = $artistWork;
-  $data->{$type}->{$artistWork}->{"id"}   = $mbid;
+ #if soloist, need to look for instrument
+ if ( $type eq "soloist" ) {
 
-  #if soloist, need to look for instrument
-  if ( $type eq "soloist" ) {
+  #print Dumper($artist);
+  my $start      = index( $artist, "\(" ) + 1;
+  my $end        = index( $artist, "\)" );
+  my $instrument = trim( substr( $artist, $start, $end - $start ) );
 
-   #print Dumper($artist);
-   my $start      = index( $artist, "\(" ) + 1;
-   my $end        = index( $artist, "\)" );
-   my $instrument = trim( substr( $artist, $start, $end - $start ) );
+  #get the mb id if not vocals
+  if ( $instrument !~ m/(vocals|choir)/i ) {
 
-   #print( "looking up: ", $instrument, "\n" );
+   ( $mbid, $instrumentName ) = &getInstrumentMbid( lc($instrument) );
+   if ($mbid) {
+    $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"id"}         = $mbid;
+    $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"name"}       = $instrumentName;
+    $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"keystrokes"} = "";
+   }
+  } else {
 
-   #print Dumper($instrument);
-   #get the mb id if not vocals
-   if ( $instrument !~ m/(vocals|choir)/i ) {
+   $instrumentName = $instrument;
+   if ( $instrument =~ m/(vocals)/i ) {
+    my $keystrokes = $keystrokesMap{ lc($instrument) };
+    if ( !$keystrokes ) {
+     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+     print( "voice keystrokes not found >", $instrument, "< exit.", "\n" );
+     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+     exit(0);
+    } else {
 
-    ( $mbid, $instrumentName ) = &getInstrumentMbid( lc($instrument) );
-    if ($mbid) {
-     $data->{$type}->{$artistWork}->{"instrument"}->{"id"}         = $mbid;
-     $data->{$type}->{$artistWork}->{"instrument"}->{"name"}       = $instrumentName;
-     $data->{$type}->{$artistWork}->{"instrument"}->{"keystrokes"} = "";
+     #print Dumper($instrumentName);
+     $instrumentName                                                                  = $instrument;
+     $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"id"}         = "";
+     $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"name"}       = $instrument;
+     $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"keystrokes"} = $keystrokes;
+
     }
    } else {
 
-    if ( $instrument =~ m/(vocals)/i ) {
-     my $keystrokes = $keystrokesMap{ lc($instrument) };
-     if ( !$keystrokes ) {
-      print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-      print( "voice keystrokes not found ", $instrument, " exit.", "\n" );
-      print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-      exit(0);
-     } else {
-      $data->{$type}->{$artistWork}->{"instrument"}->{"id"}         = "";
-      $data->{$type}->{$artistWork}->{"instrument"}->{"name"}       = $instrumentName;
-      $data->{$type}->{$artistWork}->{"instrument"}->{"keystrokes"} = $keystrokes;
-
-     }
-    } else {
-
-     #choir
-     $data->{$type}->{$artistWork}->{"instrument"}->{"id"}         = "";
-     $data->{$type}->{$artistWork}->{"instrument"}->{"name"}       = "chorus";
-     $data->{$type}->{$artistWork}->{"instrument"}->{"keystrokes"} = 13;
-
-    }
+    #choir
+    $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"id"}         = "";
+    $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"name"}       = "chorus";
+    $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"keystrokes"} = 13;
 
    }
 
-   #exit;
   }
 
- }
+  #exit;
+ }    # soloist
 
- push @{ $data->{$type}->{$artistWork}->{"tracks"} }, $track;
+  if ($instrumentName) {
+  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"tracks"} }, $track;
+ } else {
+  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{"n/a"}->{"tracks"} }, $track;
+ }
 
  return $data;
 
@@ -979,8 +976,6 @@ sub albumLabel {
 sub albumUPC {
  my ($discogs) = @_;
 
- #print Dumper($discogs);exit;
-
  my ( $albumUPC, $htmlPart ) = "";
 
  $albumUPC = $discogs;
@@ -997,8 +992,6 @@ sub albumUPC {
 
 sub albumTitle {
  my ($discogs) = @_;
-
- #print Dumper($discogs);exit;
 
  my ( $albumTitle, $htmlPart ) = "";
 
