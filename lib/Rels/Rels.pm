@@ -1,7 +1,10 @@
 use Data::Dumper::Simple;
+use Text::Tabs;
 
-use constant DISTANCE_TOLERANCE      => 3;
-use constant DISTANCE_TOLERANCE_WORK => 15;
+use constant DISTANCE_TOLERANCE      => 3;     # artist
+use constant DISTANCE_TOLERANCE_WORK => 15;    # work
+
+$tabstop = 3;
 
 # export module
 use Exporter qw(import);
@@ -11,7 +14,10 @@ our @EXPORT_OK = qw( getWorkAliasesMbid getTrackPositionMbid getWorkMbid, getPla
 sub getTrackPositionMbid {
  my ( $Mbid, $position, $workTitle, $composerMbid ) = @_;
 
- #if ( $workTitle =~ m/Corrente Quinta/ ) {
+ #print( "\n", $Mbid, ":", $position, ":", $workTitle, ":", $composerMbid, "\n" );
+ print( "\nsearching MB for >", $workTitle, "< postion >", $position, "< within work >", $Mbid, "<\n" );
+
+ #if ( $workTitle =~ m/Fantasias or Caprices, op. 16 2. Scherzo. Presto/ ) {
 
  my ( $id,     $orderingKey, $mbTitle ) = "";
  my ( $mbzUrl, $cmd,         $xml )     = "";
@@ -36,6 +42,7 @@ sub getTrackPositionMbid {
   $mainWorkXML->{$Mbid} = $xml;
  } else {
   $xml = $mainWorkXML->{$Mbid};
+  #print("cache at work-> main work\n");
  }
 
  # replace xmlns with something, can't read it with namespace
@@ -53,9 +60,10 @@ sub getTrackPositionMbid {
     $id      = $work->getAttribute("id");
     $mbTitle = $work->findvalue("title");
 
-    #print( "position ", $position, " returned value: ", $id, " title: ", $mbTitle, "\n" );
-
+    print( "return >", $id, "< work >", $mbTitle, "<\n" );
     return ( $id, $mbTitle );
+
+    #return ( $id, $mbTitle );
 
    }    #work
   }    #direction and position
@@ -64,36 +72,40 @@ sub getTrackPositionMbid {
  # not found, some albums create additional tracks for a movement, for example last movement of Beeth 9th
  if ( !$id ) {
   ( $id, $mbTitle ) = &getWorkAliasesMbid( $composerMbid, $workTitle );
-
  }
 
  #}    #debug
 
- #print( "position ", $position, " returned value: ", $id, " title: ", $mbTitle, "\n" );
+ print( "return >", $id, "< work >", $mbTitle, "<\n" );
+
+ #exit;
  return ( $id, $mbTitle );
 }
 
 # get MB Id for work using title and aliases, especially the last one is usefull
 sub getWorkAliasesMbid {
 
- my ( $Mbid, $title ) = @_;
+ my ( $Mbid, $title	 ) = @_;
+
+ my $firstPrint = "y";
 
  my $url01 = $urlBase . '/ws/2/work?query=';
 
- print( "\tsearching MB for title and alias: ", $title );
+ print expand ( "\tsearching MB for title/alias: ", $title );
  my $url02_1 = "work:" . uri_escape_utf8($title);
  my $url02_2 = uri_escape_utf8(" AND ") . "arid:" . $Mbid;
 
  my $searchUrl = $url01 . $url02_1 . $url02_2;
+ my ( $cmd, $xml ) = "";
 
+ #need to pause between api calls, not needed when running local instance;
  sleep($sleepTime);
- my $cmd = "curl -s " . $searchUrl;
-
- my $xml = `$cmd`;
-
+ $cmd = "curl -s " . $searchUrl;
+ $xml = `$cmd`;
  $xml =~ s/xmlns/replaced/;
  $xml =~ s/xmlns:ns2/replaced2/;
  $xml =~ s/ns2:score/score/ig;
+ $mainWorkXML->{$title} = $xml;
 
  #save to file
  $counterAlias = $counterAlias + 1;
@@ -101,9 +113,11 @@ sub getWorkAliasesMbid {
  &dumpToFile( "workAlias-" . $counterAlias . ".xml", $xml );    #exit(0);
  &dumpToFile( "workAlias-" . $counterAlias . ".cmd", $cmd );
 
- my ( $score, $MbidWork, $mbIName, $mbTitle ) = "";
- my $lowScore = '99999';
+ my ( $score, $MbidWork, $mbIName, $mbTitle,$titleRet ) = "";
+ my $lowScore = '999';
 
+ # ususally the first returned is the most correct.
+ # take it as long as it is <= threshold
  my $dom = XML::LibXML->load_xml( string => $xml );
 
  foreach my $work ( $dom->findnodes("/metadata/work-list/work") ) {
@@ -122,17 +136,24 @@ sub getWorkAliasesMbid {
       $mbTitle = $work->findvalue("title");
       my $distance = distance( $title, $mbTitle, { ignore_diacritics => 1 } );
 
-      #print( " a ", $distance, " ", $lowScore, " between ", $title, " <---> ", $mbTitle, "\n" );
-      if ( $lowScore > $distance ) {
+      if ($firstPrint) {
+       $firstPrint = "";
+       print expand ( "\n\t\ttitle ", sprintf( "%03d", $distance ), "\t", sprintf( "%03d", $lowScore ), "\t", $title, "<--->", $mbTitle, "\n" );
+      } else {
+       print expand ( "\t\ttitle ", sprintf( "%03d", $distance ), "\t", sprintf( "%03d", $lowScore ), "\t", $title, "<--->", $mbTitle, "\n" );
+      }
+
+      if ( $lowScore > $distance && $distance <= DISTANCE_TOLERANCE_WORK ) {
        $lowScore = $distance;
        $MbidWork = $work->getAttribute("id");
-       if ( $lowScore <= DISTANCE_TOLERANCE_WORK ) {
-        print( " : ", $MbidWork, "\n" );
-        return ( $MbidWork, $mbTitle );
-       }
+       $titleRet = $mbTitle;
+       return ( $MbidWork, $titleRet );
+
       }
 
       # if not found, check aliases
+      if ($MbidWork) { next; }
+
       foreach my $alias ( $work->findnodes("alias-list") ) {
 
        my $names = join "%", map { $_->to_literal(); } $alias->findnodes('./alias');
@@ -140,27 +161,26 @@ sub getWorkAliasesMbid {
        foreach my $alias (@arr) {
         $distance = distance( $title, $alias, { ignore_diacritics => 1 } );
 
-        #print( " b ", $distance, " ", $lowScore, " between ", $title, " <---> ", $alias, "\n" );
+        print expand( "\t\talias ", sprintf( "%03d", $distance ), "\t", sprintf( "%03d", $lowScore ), "\t", $title, "<--->", $alias, "\n" );
 
-        if ( $lowScore > $distance ) {
+        if ( $lowScore > $distance && $distance <= DISTANCE_TOLERANCE_WORK ) {
          $lowScore = $distance;
          $MbidWork = $work->getAttribute("id");
-         if ( $lowScore <= DISTANCE_TOLERANCE_WORK ) {
-          print( " : ", $MbidWork, "\n" );
-          $mbTitle = $alias;
-          return ( $MbidWork, $mbTitle );
-         }    # tolerance
-        }    #score
+         $titleRet = $alias;
+         return ( $MbidWork, $titleRet );
+
+        }    # tolerance
+
        }    # alias array
       }    # alias
+
      }    # composer
     }    # artist
    }    # relation
   }    # relation list
  }    # work
 
- print( " : ", $MbidWork, "\n" );
- return ( $MbidWork, $mbTitle );
+ return ( $MbidWork, $titleRet );
 }
 
 # get MB Id for main work
@@ -194,7 +214,7 @@ sub getWorkMbid {
  &dumpToFile( "work-" . $counter . ".cmd", $cmd );
 
  my ( $score, $mbIName ) = "";
- my $lowScore = '99999';
+ my $lowScore = '999';
 
  my $dom = XML::LibXML->load_xml( string => $xml );
 
@@ -226,7 +246,7 @@ sub getWorkMbid {
         }
 
        }
-      } # disambiguation
+      }    # disambiguation
      }
     }
    }
@@ -246,7 +266,7 @@ sub getInstrumentMbid {
 
  if ( $lookup->{$name} ) {
 
-  #print( "\tfound in lookup", "\n" );
+  #print expand ( "\tfound in lookup", "\n" );
   return ( $lookup->{$name}->{"instrumentId"}, $lookup->{$name}->{"instrumentName"} );
  }
 
@@ -301,7 +321,7 @@ sub getInstrumentMbid {
    foreach my $alias (@arr) {
     $distance = distance( $name, $alias, { ignore_diacritics => 1 } );
 
-    #print( "\talias ", $distance, " between ", $name, '<-->', $alias, "\n" );
+    #print expand( "\talias ", $distance, " between ", $name, '<-->', $alias, "\n" );
 
     if ( $distance <= 1 ) {
      $instrumentId   = $instrument->getAttribute("id");
@@ -364,7 +384,7 @@ sub getMBArtist {
 
  # https://musicbrainz.org/ws/2/artist?query=artist%3ABernard%20Richter'
  my $cmd = "curl -s " . $urlBase . "/ws/2/artist?query=" . $url02;
- 
+
  my $xml = `$cmd`;
 
  $xml =~ s/xmlns/replaced/;
@@ -403,7 +423,7 @@ sub getMBArtist {
    foreach my $alias (@arr) {
     $distance = distance( $name, $alias, { ignore_diacritics => 1 } );
 
-    #print( "\talias ", $distance, " between ", $name, '<-->', $alias, "\n" );
+    #print expand( "\talias ", $distance, " between ", $name, '<-->', $alias, "\n" );
 
     if ( $distance <= DISTANCE_TOLERANCE ) {
      $artistId     = $artist->getAttribute("id");

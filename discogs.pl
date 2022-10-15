@@ -178,6 +178,14 @@ if ($htmlPart) {
  $htmlForm = $htmlForm . $htmlPart;
 }
 
+# album catalog number
+$htmlPart = "";
+$htmlPart = &albumCat( $discogs->{"catno"} );
+if ($htmlPart) {
+ $htmlForm = $htmlForm . $htmlPart;
+}
+
+
 # release event
 $htmlPart = "";
 $htmlPart = &albumRelease( $discogs->{"released"} );
@@ -237,6 +245,9 @@ $htmlForm = $htmlForm . '<script>document.forms[0].submit()</script>' . "\n";
 
 #need to write a file for relationship add
 $data->{"url"}=$discogs->{"url"}; 
+# before writing it, set sorted tracks to a counter as for selenium those are just serial objects
+#print Dumper($data);exit;
+
 &writeRelationshipPersistentSerialHash( 'relationshipsSerial.txt', $data );
 
 #open in default browser
@@ -686,8 +697,11 @@ sub setWorks {
  # loop thru tracks and get track works, sort it
  #print "\n";
 
+ my $counter=0;
  foreach my $track ( sort { $a cmp $b } keys %{$tracks} ) {
 
+  $counter++;
+  
   my $work         = $tracks->{$track}->{"work"};
   my $title        = $tracks->{$track}->{"title"};
   my $workMBid     = $mainWorks->{$work}->{"workId"};
@@ -710,7 +724,7 @@ sub setWorks {
   if ( $workMBid && $position ) {
    ( $trackMBid, $mbTitle ) = &getTrackPositionMbid( $workMBid, $position, $title, $composerMBid );
   }
-  $data->{"works"}->{$track} = $trackMBid;
+  $data->{"works"}->{sprintf( "%03d",$counter)} = $trackMBid;
  }
 
  #print Dumper($data);exit(0);
@@ -729,7 +743,7 @@ sub setArtists {
  my $numberOfTracks = 0;
  my ( $volumeHash, $data ) = {};
 
- foreach my $track ( keys %{$tracks} ) {
+ foreach my $track ( sort { $a cmp $b } keys %{$tracks} ) {
 
   my @arr = split( "-", $track );
   if ( $arr[1] ) {
@@ -751,24 +765,24 @@ sub setArtists {
    # look for composer
    if ( $artist =~ m/(\(composer\))/i ) {
     $foundIt = "y";
-    $data    = &populateHash( "composer", $artist, $track, $data );
+    $data    = &populateHash( $numberOfTracks ,"composer", $artist, $track, $data );
    }
 
    # look for ensemble
    if ( $artist =~ m/(\(orch\))/i ) {
     $foundIt = "y";
-    $data    = &populateHash( "ensemble", $artist, $track, $data );
+    $data    = &populateHash( $numberOfTracks, "ensemble", $artist, $track, $data );
    }
 
    # look for conductor
    if ( $artist =~ m/(\(con\))/i ) {
     $foundIt = "y";
-    $data    = &populateHash( "conductor", $artist, $track, $data );
+    $data    = &populateHash( $numberOfTracks,"conductor", $artist, $track, $data );
    }
 
    # default soloist
    if ( !$foundIt ) {
-    $data = &populateHash( "soloist", $artist, $track, $data );
+    $data = &populateHash( $numberOfTracks, "soloist", $artist, $track, $data );
    }
 
   }
@@ -810,7 +824,7 @@ sub setArtists {
 # populate hash with artists
 # one artist can play more than one instrument
 sub populateHash {
- my ( $type, $artist, $track, $data ) = @_;
+ my ( $absTrackNo, $type, $artist, $track, $data ) = @_;
 
  my ( $mbid, $artistName, $instrumentName ) = "";
  my $artistWork = trim( substr( $artist, 0, index( $artist, "\(" ) ) );
@@ -873,9 +887,9 @@ sub populateHash {
  }    # soloist
 
   if ($instrumentName) {
-  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"tracks"} }, $track;
+  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"tracks"} }, sprintf( "%03d",$absTrackNo) ;
  } else {
-  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{"n/a"}->{"tracks"} }, $track;
+  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{"n/a"}->{"tracks"} }, sprintf( "%03d",$absTrackNo);
  }
 
  return $data;
@@ -972,6 +986,23 @@ sub albumLabel {
 
  return $htmlPart;
 
+}
+
+# album catalog number
+sub albumCat {
+ my ($discogs) = @_;
+
+ my ( $albumCat, $htmlPart ) = "";
+
+$albumCat = $discogs;
+
+ if ($albumCat) {
+  $htmlPart = '<input type="hidden" name="labels.0.catalog_number" value="' . $albumCat . '">' . "\n";
+ }
+
+ return $htmlPart;
+	
+	
 }
 
 sub albumUPC {

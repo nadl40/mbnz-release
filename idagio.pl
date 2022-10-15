@@ -23,6 +23,7 @@ use Text::Levenshtein qw(distance);
 use Mojo::DOM;
 use Env;
 use Config::General;
+use List::MoreUtils qw(firstidx);
 
 #for my modules start
 use File::Basename qw(dirname);
@@ -105,8 +106,9 @@ $htmlForm = $htmlForm . '<form action="https://musicbrainz.org/release/add" meth
 
 my @arr = ();
 $cmd = "";
-my $dataJson = "";
-my $hash     = {};
+my $dataJson  = "";
+my $hash      = {};
+my @tracksArr = ();
 
 #cache xml results for main work MBid
 my $counter         = 0;
@@ -159,7 +161,7 @@ while ( my $line = <$fh> ) {
   #&dumpToFile( "data.json", $data );exit;
 
   my $idagio = JSON->new->utf8->decode($data);
-  &writeHash( "release.txt", $idagio );
+  &writeHash( "release.txt", $idagio );    #exit;
 
   $htmlPart = "";
   $htmlPart = &albumTitle( $idagio->{"entities"}->{"albums"} );
@@ -240,7 +242,7 @@ while ( my $line = <$fh> ) {
 
   # create a diff persistent hash for a relationship webdriver
   my $relationshipHashSerial = &getRelationshipsByTracks( $trackHash, $trackSeq, $idagio->{"entities"}, @releaseCredit );
-  $relationshipHashSerial->{"url"}=$idagioUrl;
+  $relationshipHashSerial->{"url"} = $idagioUrl;
   &writeRelationshipPersistentSerialHash( 'relationshipsSerial.txt', $relationshipHashSerial );
 
  }    # end of json data
@@ -293,6 +295,9 @@ sub getRelationshipsByTracks {
 
     $recording = $idagio->{$entity}->{$track}->{"recording"};
 
+    # get track numbers from array previously created
+    my $trackNo = ( firstidx { $_ eq $track } @tracksArr ) + 1;
+
     # get recording date as it belongs to venue IMHO
     ( $month, $year, $day ) = "";
     foreach my $entity ( keys %{ $recordings->{$recording} } ) {
@@ -320,11 +325,12 @@ sub getRelationshipsByTracks {
       if ( $recordings->{$recording}->{$entity}->{"location"}->{"name"} ) {
        $venueName = $venueName . " " . $recordings->{$recording}->{$entity}->{"location"}->{"name"};
       }
-      my $track = $trackSeq->{$track};
+
+      #my $track = $trackSeq->{$track};
 
       if ($venueId) {
        $hash->{$entity}->{$venueId}->{"name"} = $venueName;
-       push @{ $hash->{$entity}->{$venueId}->{"venue"}->{"venue"}->{"tracks"} }, $track;
+       push @{ $hash->{$entity}->{$venueId}->{"venue"}->{"venue"}->{"tracks"} }, $trackNo;
 
        my $placeName = $hash->{$entity}->{$venueId}->{"name"};
 
@@ -350,11 +356,12 @@ sub getRelationshipsByTracks {
      if ( $entity eq "conductor" ) {
 
       my $personId = $recordings->{$recording}->{$entity};
-      my $track    = $trackSeq->{$track};
+
+      #my $track    = $trackSeq->{$track};
       if ($personId) {
        $hash->{$entity}->{$personId}->{"name"} = $persons->{$personId}->{"name"};
        $hash->{$entity}->{$personId}->{"id"}   = $persons->{$personId}->{"id"};
-       push @{ $hash->{$entity}->{$personId}->{"venue"}->{"n/a"}->{"tracks"} }, $track;
+       push @{ $hash->{$entity}->{$personId}->{"venue"}->{"n/a"}->{"tracks"} }, $trackNo;
 
       }
 
@@ -368,7 +375,8 @@ sub getRelationshipsByTracks {
       foreach my $ensembleId (@arr) {
 
        my $personId = $ensembleId;
-       my $track    = $trackSeq->{$track};
+
+       #my $track    = $trackSeq->{$track};
 
        if ( $ensembles->{$ensembleId}->{"chorus"} ) {
 
@@ -380,14 +388,14 @@ sub getRelationshipsByTracks {
         $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"}   = $ensembles->{$ensembleId}->{"keystrokes"};
         $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"instrumentId"} = '';
 
-        push @{ $hash->{"soloists"}->{$personId}->{"instrument"}->{"n/a"}->{"tracks"} }, $track;
+        push @{ $hash->{"soloists"}->{$personId}->{"instrument"}->{"n/a"}->{"tracks"} }, $trackNo;
 
        } else {
 
         my $instrument = $ensembles->{$ensembleId}->{"chorus"};
         $hash->{$entity}->{$ensembleId}->{"name"} = $ensembles->{$ensembleId}->{"name"};
         $hash->{$entity}->{$ensembleId}->{"id"}   = $ensembles->{$ensembleId}->{"id"};
-        push @{ $hash->{$entity}->{$personId}->{"instrument"}->{"n/a"}->{"tracks"} }, $track;
+        push @{ $hash->{$entity}->{$personId}->{"instrument"}->{"n/a"}->{"tracks"} }, $trackNo;
        }
       }
 
@@ -403,7 +411,8 @@ sub getRelationshipsByTracks {
        my $personId = $performerId->{"person"};
 
        my $instrumentId = $performerId->{"instrument"};
-       my $track        = $trackSeq->{$track};
+
+       #my $track        = $trackSeq->{$track};
 
        $hash->{$entity}->{$personId}->{"name"} = $persons->{$personId}->{"name"};
        $hash->{$entity}->{$personId}->{"id"}   = $persons->{$personId}->{"id"};
@@ -413,7 +422,7 @@ sub getRelationshipsByTracks {
        $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"name"}       = $instruments->{$instrumentId}->{"name"};
        $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"} = $instruments->{$instrumentId}->{"keystrokes"};
 
-       push @{ $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"tracks"} }, $track;
+       push @{ $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"tracks"} }, $trackNo;
 
       }
      }
@@ -518,6 +527,11 @@ sub loadEnsembles {
  }
 
  return $hash;
+
+}
+
+# lookup keystrokes for voice instruments
+sub getKeyStrokes {
 
 }
 
@@ -671,16 +685,13 @@ sub getImages {
 sub albumTracks {
  my ( $idagio, @releaseCredit ) = @_;
 
- # print to a file
- my $debug = Dumper($idagio);
- &dumpToFile( "idagio.txt", $debug );    #exit(0);
+ my $workData  = &loadWork($idagio);             #print Dumper($workData);#exit;
+ my $allPieces = &loadAllWorkPieces($idagio);    #print Dumper($allPieces);exit;
+ my $composers = &loadComposers($idagio);
 
- my $pieceData     = &loadPieces($idagio);       #print Dumper($pieceData);
- my $workPartsData = &loadWorkParts($idagio);    #print Dumper($workPartsData);
- my $workData      = &loadWork($idagio);         #print Dumper($workData);exit;
- my $composers     = &loadComposers($idagio);
- my $tracks        = &loadTracks($idagio);
- my $trackNo       = 0;
+ # this is the sequence of tracks on an album
+ my $tracks = {};
+ @tracksArr = &loadTracks($idagio);              #print Dumper(@tracksArr); exit;
 
  # add mbid to $workData
  foreach my $workId ( keys %{$workData} ) {
@@ -702,87 +713,60 @@ sub albumTracks {
 
   if ( $type eq "tracks" ) {
 
-   #print Dumper($idagio->{$type});exit(0);
+   my $currentWork = "";
+   my $trackNo     = 0;
+   my $position    = 0;
 
-   my $positionCalc = 0;
-   foreach my $track ( sort { $a cmp $b } keys %{ $idagio->{$type} } ) {
+   foreach my $track (@tracksArr) {
 
     # get track id
-    my $trackId  = $idagio->{$type}->{$track}->{"id"};
-    my $duration = $idagio->{$type}->{$track}->{"duration"} * 1000;
-    my $piece    = $idagio->{$type}->{$track}->{"piece"};
+    my $trackId    = $idagio->{$type}->{$track}->{"id"};
+    my $duration   = $idagio->{$type}->{$track}->{"duration"} * 1000;
+    my $piece      = $idagio->{$type}->{$track}->{"piece"};
+    my $sequence   = $idagio->{$type}->{$track}->{"position"};
+    my $workPart   = $idagio->{"pieces"}->{$piece}->{"workpart"};
+    my $workId     = $idagio->{"workparts"}->{$workPart}->{"work"};
+    my $workMbid   = $workData->{$workId}->{"mbid"};
+    my $workTitle  = $workData->{$workId}->{"title"};
+    my $composerId = $idagio->{"works"}->{$workId}->{"composer"};
 
-    # assign own position as idagio skips
-    if ( $idagio->{$type}->{$track}->{"position"} == 1 ) {
-     $positionCalc = 1;
+    # assign position within work
+    if ( $sequence == 1 ) {
+     $position = 1;
     } else {
-     $positionCalc++;
+     $position++;
     }
-    my $position = $positionCalc;
 
-    # work or movement title contains position
-    my $title1 = &clean( $pieceData->{$piece}->{"title"} );
-    my @arr    = split( " ", $title1 );
-    shift @arr;
-    $title1 = join( " ", @arr );
+    $trackNo++;
 
-    # how you get data from piece up
-    # 1. pieces=>{"workpart"}
-    # 2. workpart=>{"work"}
-    # 3. work
-    my $workPart = $pieceData->{$piece}->{"workpart"};
-
-    # workpart gives me work
-    my $workId   = $workPartsData->{$workPart}->{"work"};
-    my $workMbid = $workData->{$workId}->{"mbid"};
-
-    my $title2 = &clean( $workPartsData->{$workPart}->{"title"} );
-
-    # work give me title and composer id
-    my $title3 = &clean( $workData->{$workId}->{"title"} );    #exit;
-
-    my $composerId = $workData->{$workId}->{"composer"};
+    my $title = $allPieces->{$piece};
+    $title =~ s/\|/ /ig;    # replace piece separator with space
+    $title = &clean($title);
 
     # now get composer name
-    my $composerName = $composers->{$composerId};
+    my $composerName = $idagio->{"persons"}->{$composerId}->{"name"};
 
     # need mbnz id for composers
     my $composerMbid = &getMbid( "composer", $composerName, @releaseCredit );
 
     # track number
-    my $trackNo = sprintf( "%02d", $tracks->{$trackId} );
+    my $trackNo = sprintf( "%03d", $trackNo );
 
     $trackHash->{$trackNo}->{"duration"} = $duration;
 
-    # single movements have the title twice
-    # sometimes $title1 and $title2 are main titles but diff spelling... no can do
-    #print( $title3, "--->", $title2, "--->", $title1, "\n" );
-
-    if ( $title3 eq $title1 and !$title2 ) {
-     $trackHash->{$trackNo}->{"title"} = $title3;
+    if ($title) {
+     $trackHash->{$trackNo}->{"title"} = $title;
     }
 
-    if ( $title3 eq $title1 and $title2 ) {
-     $trackHash->{$trackNo}->{"title"} = $title3 . ", " . $title2;
-    }
-
-    if ( $title3 ne $title1 and !$title2 ) {
-     $trackHash->{$trackNo}->{"title"} = $title3 . ": " . $title1;
-    }
-
-    if ( $title3 ne $title1 and $title2 ) {
-     $trackHash->{$trackNo}->{"title"} = $title3 . ", " . $title2 . ": " . $title1;
-    }
-
-    # get MB workid, use a composer mbid, perhaps only part of catalogue
     # $workMbid contains main work id
     # $position contains position within work
     if ( $workMbid && $position ) {
      ( $trackHash->{$trackNo}->{"work_mbid"}, $trackHash->{$trackNo}->{"mbTitle"} ) =
-       &getTrackPositionMbid( $workMbid, $position, $trackHash->{$trackNo}->{"title"}, $composerMbid );
+       &getTrackPositionMbid( $workMbid, $position, $title, $composerMbid );
     } else {
-     ( $trackHash->{$trackNo}->{"work_mbid"}, $trackHash->{$trackNo}->{"mbTitle"} ) =
-       &getWorkAliasesMbid( $composerMbid, $trackHash->{$trackNo}->{"title"} );
+     # advance printline so it stands out
+     print "\n";
+     ( $trackHash->{$trackNo}->{"work_mbid"}, $trackHash->{$trackNo}->{"mbTitle"} ) = &getWorkAliasesMbid( $composerMbid, $title );
     }
     $trackHash->{$trackNo}->{"composer"} = $composerName;
     $trackHash->{$trackNo}->{"mbid"}     = $composerMbid;
@@ -793,8 +777,44 @@ sub albumTracks {
 
  my $htmlForm = &formatTracksForm($trackHash);
 
+ #exit(0);
  return ( $trackHash, $htmlForm, $tracks );
 
+}
+
+#test loading just pieces assuming they are unique accross
+sub loadAllWorkPieces {
+ my ($idagio) = @_;
+
+ my $allPieces = {};
+
+ foreach my $type ( keys %{$idagio} ) {
+
+  if ( $type eq "pieces" ) {
+
+   foreach my $pieceId ( keys %{ $idagio->{$type} } ) {
+
+    my $title    = $idagio->{$type}->{$pieceId}->{"title"};
+    my $workPart = $idagio->{$type}->{$pieceId}->{"workpart"};
+
+    if ( $idagio->{"workparts"}->{$workPart}->{"title"} ) {
+     $title = $idagio->{"workparts"}->{$workPart}->{"title"} . "|" . $title;
+    }
+
+    my $work = $idagio->{"workparts"}->{$workPart}->{"work"};
+
+    if ( $idagio->{"works"}->{$work}->{"title"} ) {
+     $title = $idagio->{"works"}->{$work}->{"title"} . "|" . $title;
+    }
+
+    $allPieces->{$pieceId} = $title;
+
+   }
+  }
+ }
+
+ #exit;
+ return $allPieces;
 }
 
 # format html for tracks
@@ -857,26 +877,27 @@ sub loadTracks {
  my ($idagio) = @_;
 
  my $i      = 0;
- my $tracks = {};
+ my @tracks = ();
  foreach my $id ( keys %{ $idagio->{"albums"} } ) {
 
   foreach my $type ( keys %{ $idagio->{"albums"}->{$id} } ) {
 
    if ( $type eq "tracks" ) {
 
-    my @arr = @{ $idagio->{"albums"}->{$id}->{$type} };
+    @tracks = @{ $idagio->{"albums"}->{$id}->{$type} };
 
-    foreach my $track (@arr) {
-     $i++;
-     $tracks->{$track} = $i;
-    }
+    #foreach my $track (@arr) {
+    # $i++;
+    # $tracks->{$track} = $i;
+    #}
    }
 
   }
 
  }
 
- return $tracks;
+ #print Dumper(@tracks);exit;
+ return @tracks;
 }
 
 # load composers

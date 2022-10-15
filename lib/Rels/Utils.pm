@@ -38,6 +38,7 @@ sub clean {
   $title =~ s/ Hob\. /, Hob\. /;
   $title =~ s/ BWV /, BWV /;
   $title =~ s/ S /, S\. /;
+  $title =~ s/,,/,\. /;
 
   # emebeded double quotes are not good
   $title =~ s/\"/\'/g;
@@ -48,6 +49,7 @@ sub clean {
   $title =~ s/\([^)]*\)//g;
   $title =~ s/  / /g;
   $title = trim($title);
+
 
  }
 

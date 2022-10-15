@@ -97,6 +97,7 @@ foreach my $item ( keys %{$result} ) {
 
 # create $releaseHash;
 &buildMetaDataHashes();
+#print Dumper($releaseHash);exit;
 
 #clone it
 $releaseHashSort = dclone $releaseHash;
@@ -107,26 +108,10 @@ $releaseHashSort = dclone $releaseHash;
 # expand track info for regular
 &addArtistToTracks( $artistHash, $releaseHash );
 
-# before writing to file, fix the track positions as just incremental numbers for selenium
-my $newHash = {};
-my $counter = 0;
-my $trackNo = "";
-foreach my $item ( keys %{$releaseHash} ) {
- if ( $item ne "tracks" ) {
-  $newHash->{$item} = $releaseHash->{$item};
- } else {
-  foreach my $track ( sort { $a cmp $b } keys %{ $releaseHash->{$item} } ) {
-   $counter++;
-   $trackNo = sprintf( "%02d", $counter );
-   $newHash->{$item}->{$trackNo} = $releaseHash->{$item}->{$track};
-  }
- }
-}
-
 #&dumpToFile( "metadata.txt", \$releaseHash );
 # write hash to read later
 my $obj = Hash::Persistent->new( "metadata.txt", { format => "dumper" } );    # Dumper format, easy to read
-$obj->{string} = $newHash;                                                    # make sure this is a proper hash reference, watch out for "\"
+$obj->{string} = $releaseHash;                                                # make sure this is a proper hash reference, watch out for "\"
 $obj->commit;                                                                 # save
 undef $obj;
 
@@ -484,36 +469,64 @@ sub trackList {
    ( $work, $title ) = &setWorkTitle( $comp, $part, $mov );
 
    #print Dumper($item);
-   $releaseHash->{"tracks"}->{ $item->{position} }->{"title"}    = $title;
-   $releaseHash->{"tracks"}->{ $item->{position} }->{"work"}     = $work;
-   $releaseHash->{"tracks"}->{ $item->{position} }->{"duration"} = $item->{"duration"};
+   
+   # in case this is vol-track
+   my $trackNo = &formatTrack($item->{"position"}); 
+  
+   $releaseHash->{"tracks"}->{ $trackNo }->{"title"}    = $title;
+   $releaseHash->{"tracks"}->{ $trackNo }->{"work"}     = $work;
+   $releaseHash->{"tracks"}->{ $trackNo }->{"duration"} = $item->{"duration"};
    foreach my $artist ( @{ $item->{extraartists} } ) {
-    &indexArtists( $artist, $item->{position} );
+    &indexArtists( $artist, $trackNo );
    }
   }
 
   # for index
   if ( $item->{type_} eq "index" ) {
+   
+    #print Dumper($item);
 
-   for my $subtracks ( @{ $item->{sub_tracks} } ) {
-    $mov = $subtracks->{title};
+   for my $subtrack ( @{ $item->{"sub_tracks"} } ) {
+
+    $mov = $subtrack->{"title"};
 
     ( $work, $title ) = &setWorkTitle( $comp, $part, $mov );
 
-    $releaseHash->{"tracks"}->{ trim( $subtracks->{position} ) }->{"title"}    = $title;
-    $releaseHash->{"tracks"}->{ trim( $subtracks->{position} ) }->{"work"}     = $work;
-    $releaseHash->{"tracks"}->{ trim( $subtracks->{position} ) }->{"duration"} = $subtracks->{"duration"};
+    my $trackNo = &formatTrack($subtrack->{"position"}); 
 
+    $releaseHash->{"tracks"}->{ $trackNo }->{"title"}    = $title;
+    $releaseHash->{"tracks"}->{ $trackNo }->{"work"}     = $work;
+    $releaseHash->{"tracks"}->{ $trackNo }->{"duration"} = $subtrack->{"duration"};
+
+    #print Dumper($releaseHash->{"tracks"}); 
     # if this is index, artists can be attached to all sub_tracks from index
     # for now assume that they are on all tracks of an index, see Brahms Chamber 10107843
     for my $artists ( @{ $item->{extraartists} } ) {
-     &indexArtists( $artists, trim( $subtracks->{position} ) );
+     &indexArtists( $artists, $trackNo );
     }
    }
   }
 
  }
 }
+
+# sprintf track no
+sub formatTrack {
+	my ($track) = @_;
+
+   my $trackNo = "";
+   my @arr = split("-",$track);
+   if ($arr[0]) {
+   	$trackNo = sprintf( "%02d", $arr[0]);
+   }
+   if ($arr[1]) {
+   	$trackNo = $trackNo."-".sprintf( "%02d", $arr[1]);
+   }
+   
+   return $trackNo;
+
+}
+
 
 # determine work and title from $comp, $part, $mov
 sub setWorkTitle {
