@@ -555,7 +555,8 @@ sub loadInstruments {
     # change if it does not match mb
     $hash->{$instrument}->{"name"} = lc( $idagio->{$entity}->{$instrument}->{"title"} );
 
-    if ( $idagio->{$entity}->{$instrument}->{"title"} =~ m/soprano|tenor|bass|baritone/i ) {
+    # print Dumper($idagio->{$entity}->{$instrument}->{"title"});
+    if ( $hash->{$instrument}->{"name"} =~ m/soprano|tenor|bass|baritone/i && $hash->{$instrument}->{"name"} ne "bassoon" ) {
 
      $voice = $idagio->{$entity}->{$instrument}->{"title"};
      print( "looking up ", $idagio->{$entity}->{$instrument}->{"title"}, " skipped \n" );

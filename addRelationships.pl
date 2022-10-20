@@ -83,7 +83,7 @@ undef $obj;
 # ./operadriver --url-base=/wd/hub
 my $driver = Selenium::Remote::Driver->new(
 
- debug        => 1,
+ #debug        => 1,
  browser_name => 'chrome',
 
  # extra_capabilities => {
@@ -147,7 +147,7 @@ foreach my $workAdd (@works) {
 foreach my $type ( keys %{$hashRel} ) {
 
  #print Dumper($type);
- if ( $type ne "volume" && $type ne "url" && $type ne "works"   ) {
+ if ( $type ne "volumes" && $type ne "url" && $type ne "works"   ) {
   &addCredits( $hashRel->{"volumes"}, $type, $driver, $hashRel->{$type}, $batchAdd, $recordingsSelected, @trackSelector );
  }
 }
@@ -210,6 +210,8 @@ sub addCredits {
 
  my @tracks = ();
 
+ #print Dumper($artists);#exit;
+ 
  foreach my $artistId ( keys %{$artists} ) {
 
   #print Dumper( $artistId );
@@ -554,6 +556,8 @@ sub prepSelection {
 sub offsetTracks {
  my ( $track, $volumes ) = @_;
 
+ #print Dumper($track, $volumes);
+ 
  my $trackAll = 0;
  my @arr      = split( "-", $track );
 
@@ -574,6 +578,7 @@ sub offsetTracks {
   $trackAll = $track;
  }    # volumes
 
+ #print Dumper($trackAll);
  return $trackAll;
 
 }
