@@ -150,6 +150,7 @@ my %keystrokesMap = (
  "tenor"         => 11
 );
 
+
 while ( my $line = <$fh> ) {
  chomp $line;
 
@@ -361,7 +362,7 @@ sub getRelationshipsByTracks {
       if ($personId) {
        $hash->{$entity}->{$personId}->{"name"} = $persons->{$personId}->{"name"};
        $hash->{$entity}->{$personId}->{"id"}   = $persons->{$personId}->{"id"};
-       push @{ $hash->{$entity}->{$personId}->{"venue"}->{"n/a"}->{"tracks"} }, $trackNo;
+       push @{ $hash->{$entity}->{$personId}->{"instrument"}->{"n/a"}->{"tracks"} }, $trackNo;
 
       }
 

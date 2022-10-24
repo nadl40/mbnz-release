@@ -40,7 +40,7 @@ binmode( STDOUT, "encoding(UTF-8)" );
 my ($discogsUrl) = "";
 GetOptions( "release:s" => \$discogsUrl, );
 
-#get last node form path
+#get last node from path
 my ( $base, $dir1, $ext ) = fileparse( $discogsUrl, '\.*' );
 
 #base has the release
