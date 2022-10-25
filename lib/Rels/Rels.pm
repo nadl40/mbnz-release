@@ -4,11 +4,12 @@ use Text::Tabs;
 use constant DISTANCE_TOLERANCE      => 3;     # artist
 use constant DISTANCE_TOLERANCE_WORK => 15;    # work
 
+my $counterArtist    = 0;
 $tabstop = 3;
 
 # export module
 use Exporter qw(import);
-our @EXPORT_OK = qw( getWorkAliasesMbid getTrackPositionMbid getWorkMbid, getPlaceMbid, getArtistMbid getInstrumentMbid);
+our @EXPORT_OK = qw( getWorkAliasesMbid getTrackPositionMbid getWorkMbid getPlaceMbid getArtistMbid getInstrumentMbid);
 
 # get track Mbid using Mbid of main work and between within work
 sub getTrackPositionMbid {
@@ -91,7 +92,7 @@ sub getWorkAliasesMbid {
 
  my $url01 = $urlBase . '/ws/2/work?query=';
 
- print expand ( "\tsearching MB for title/alias: ", $title );
+ print  ( "\tsearching MB for title/alias: ", $title );
  my $url02_1 = "work:" . uri_escape_utf8($title);
  my $url02_2 = uri_escape_utf8(" AND ") . "arid:" . $Mbid;
 
@@ -226,6 +227,7 @@ sub getWorkMbid {
 
     foreach my $artistName ( $relation->findnodes("artist") ) {
      my $composerId = $artistName->getAttribute("id");
+     #print Dumper($mbId,$composerId);
      if ( $composerId eq $mbId ) {
 
       # disambiguation have special editions and arrangements etc.
@@ -357,7 +359,7 @@ sub getArtistMbid {
 
  # try both AND and OR
  my ( $artistId, $mbArtistName, $url02 ) = "";
- $url02 = 'artist:' . $name . ' AND alias:' . $name;
+ $url02 = 'artist:' . $name . ' OR alias:' . $name;
 
  ( $artistId, $mbArtistName ) = &getMBArtist( $url02, $name );
 
@@ -392,8 +394,9 @@ sub getMBArtist {
  $xml =~ s/ns2:score/score/ig;
 
  #save to file
- &dumpToFile( "artist.xml", $xml );    #exit(0);
- &dumpToFile( "artist.cmd", $cmd );    #exit(0);
+ $counterArtist++;
+ &dumpToFile( "artist-".$counterArtist.".xml", $xml );    #exit(0);
+ &dumpToFile( "artist-".$counterArtist.".cmd", $cmd );    #exit(0);
 
  my ( $artistId, $mbArtistName, $distance ) = "";
 
@@ -423,7 +426,7 @@ sub getMBArtist {
    foreach my $alias (@arr) {
     $distance = distance( $name, $alias, { ignore_diacritics => 1 } );
 
-    #print expand( "\talias ", $distance, " between ", $name, '<-->', $alias, "\n" );
+    #print ( "\talias ", $distance, " between ", $name, '<-->', $alias, "\n" );
 
     if ( $distance <= DISTANCE_TOLERANCE ) {
      $artistId     = $artist->getAttribute("id");

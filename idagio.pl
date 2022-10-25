@@ -187,12 +187,12 @@ while ( my $line = <$fh> ) {
    $htmlForm = $htmlForm . $htmlPart;
   }
 
-  # release event
-  $htmlPart = "";
-  $htmlPart = &albumRelease( $idagio->{"entities"}->{"albums"} );
-  if ($htmlPart) {
-   $htmlForm = $htmlForm . $htmlPart;
-  }
+  # release event is not digital releae, it's main recordings release
+  #$htmlPart = "";
+  #$htmlPart = &albumRelease( $idagio->{"entities"}->{"albums"} );
+  #if ($htmlPart) {
+  # $htmlForm = $htmlForm . $htmlPart;
+  #}
 
   # url from argument
   $htmlPart = "";
