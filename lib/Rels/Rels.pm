@@ -1,8 +1,8 @@
 use Data::Dumper::Simple;
 use Text::Tabs;
 
-use constant DISTANCE_TOLERANCE      => 3;     # artist
-use constant DISTANCE_TOLERANCE_WORK => 15;    # work
+use constant DISTANCE_TOLERANCE_ARTIST 	=> 1;     # artist
+use constant DISTANCE_TOLERANCE_WORK 		=> 15;    # work
 
 my $counterArtist    = 0;
 $tabstop = 3;
@@ -411,7 +411,7 @@ sub getMBArtist {
 
   #print( $distance, " between ", $name, '<-->', $mbArtistName, "\n" );
 
-  if ( $distance <= DISTANCE_TOLERANCE ) {
+  if ( $distance <= DISTANCE_TOLERANCE_ARTIST ) {
    $artistId     = $artist->getAttribute("id");
    $mbArtistName = $artist->findvalue("name");
    return ( $artistId, $mbArtistName );
@@ -428,7 +428,7 @@ sub getMBArtist {
 
     #print ( "\talias ", $distance, " between ", $name, '<-->', $alias, "\n" );
 
-    if ( $distance <= DISTANCE_TOLERANCE ) {
+    if ( $distance <= DISTANCE_TOLERANCE_ARTIST ) {
      $artistId     = $artist->getAttribute("id");
      $mbArtistName = $artist->findvalue("name");
 

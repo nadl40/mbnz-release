@@ -695,7 +695,7 @@ sub albumTracks {
  my $tracks = {};
  @tracksArr = &loadTracks($idagio);              #print Dumper(@tracksArr); exit;
 
- # add mbid to $workData
+ # add mbid to man work
  foreach my $workId ( keys %{$workData} ) {
 
   my $composerId = $workData->{$workId}->{"composer"};
@@ -729,7 +729,7 @@ sub albumTracks {
     my $workPart   = $idagio->{"pieces"}->{$piece}->{"workpart"};
     my $workId     = $idagio->{"workparts"}->{$workPart}->{"work"};
     my $workMbid   = $workData->{$workId}->{"mbid"};
-    my $workTitle  = $workData->{$workId}->{"title"};
+    #my $workTitle  = $workData->{$workId}->{"title"};
     my $composerId = $idagio->{"works"}->{$workId}->{"composer"};
 
     # assign position within work
@@ -742,9 +742,21 @@ sub albumTracks {
     $trackNo++;
 
     my $title = $allPieces->{$piece};
-    $title =~ s/\|/ /ig;    # replace piece separator with space
     $title = &clean($title);
 
+    # if work and subwork are identical, then collapse
+    my @arr = split(":",$title);
+    if ($arr[0] && $arr[1] ) {
+    	my $main = trim($arr[0]);
+    	$main =~ s/,//i;
+    	my $part = trim($arr[1]);
+    	$part =~ s/,//i;
+    	
+    	if ($main eq $part) {
+    		$title = $main;
+      }
+    } # end of collapse
+    
     # now get composer name
     my $composerName = $idagio->{"persons"}->{$composerId}->{"name"};
 
@@ -809,19 +821,25 @@ sub loadAllWorkPieces {
      $title = $idagio->{"works"}->{$work}->{"title"} . "|" . $title;
     }
 
+    # first deliminator "|" should be changed to ": " as this is the way to identify top work
+    # the rest is replaced with comma
+    $title =~ s/\|/: /; 
+    $title =~ s/\|/, /g; 
+
     $allPieces->{$pieceId} = $title;
 
    }
   }
  }
 
- #exit;
  return $allPieces;
 }
 
 # format html for tracks
 sub formatTracksForm {
  my ($trackHash) = @_;
+ 
+ #print Dumper($trackHash);exit;
 
  my $htmlForm = '<input type="hidden" name="mediums.0.format" value="Digital Media">' . "\n";
 
@@ -975,30 +993,6 @@ sub loadWorkParts {
  }
 
  return $workPartsData;
-}
-
-# load pieces
-sub loadPieces {
- my ($idagio) = @_;
-
- my $pieceData = {};
- foreach my $type ( keys %{$idagio} ) {
-
-  if ( $type eq "pieces" ) {
-
-   foreach my $pieceId ( keys %{ $idagio->{$type} } ) {
-
-    my $title    = $idagio->{$type}->{$pieceId}->{"title"};
-    my $workPart = $idagio->{$type}->{$pieceId}->{"workpart"};
-
-    $pieceData->{$pieceId}->{"title"}    = $title;
-    $pieceData->{$pieceId}->{"workpart"} = $workPart;
-
-   }
-  }
- }
-
- return $pieceData;
 }
 
 # get MB Id from release credits
@@ -1182,11 +1176,24 @@ sub albumTitle {
  my ($idagio) = @_;
 
  my ( $albumTitle, $htmlPart ) = "";
-
+ 
  foreach my $id ( keys %{$idagio} ) {
   $albumTitle = &clean( $idagio->{$id}->{"title"} );
  }
 
+ # format the title
+ # Composer:  is only valid when there are multiple composers
+ # deal with multi composers later
+ my @arr = split(":",$albumTitle);
+ if ($arr[1]) {
+ 	$albumTitle = trim($arr[1]);
+ }
+ 
+ # replace "," with forward slash
+ $albumTitle =~ s/,/ \//g;
+ # replace "&" with forward slash
+ $albumTitle =~ s/&/\//g;
+ 
  # album title
  #<input type="hidden" name="name" value="Dvor�k / Tchaikovsky / Borodin: String Quartets">
  if ($albumTitle) {

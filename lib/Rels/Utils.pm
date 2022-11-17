@@ -80,7 +80,7 @@ sub writeHash {
 
 }
 
-# delete files by exension
+# delete files by extension
 sub delExtension {
  my ($ext) = @_;
 
