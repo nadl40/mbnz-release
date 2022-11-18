@@ -235,7 +235,7 @@ while ( my $line = <$fh> ) {
   #print("\n");
   if ($bookletUrl) {
 
-   print( "booklet ", $bookletUrl, "\n" );
+   print( "\nbooklet ", $bookletUrl, "\n" );
   }
   if ($imageUrl) {
 
@@ -664,23 +664,17 @@ sub getImages {
  my ( $bookletUrl, $imageUrl ) = "";
 
  foreach my $id ( keys %{$idagio} ) {
-  foreach my $type ( keys %{ $idagio->{$id} } ) {
 
-   if ( $type eq "bookletUrl" ) {
     if ( $idagio->{$id}->{"bookletUrl"} ) {
      $bookletUrl = $idagio->{$id}->{"bookletUrl"};
     }
-   }
-
-   if ( $type eq "imageUrl" ) {
     if ( $idagio->{$id}->{"imageUrl"} ) {
      $imageUrl = $idagio->{$id}->{"imageUrl"};
     }
-   }
+   
 
-  }
+  #}
  }
-
  return ( $bookletUrl, $imageUrl );
 }
 
@@ -1179,7 +1173,7 @@ sub albumTitle {
  my ( $albumTitle, $htmlPart ) = "";
  
  foreach my $id ( keys %{$idagio} ) {
-  $albumTitle = &clean( $idagio->{$id}->{"title"} );
+  $albumTitle = $idagio->{$id}->{"title"};
  }
 
  # format the title
@@ -1190,10 +1184,11 @@ sub albumTitle {
  	$albumTitle = trim($arr[1]);
  }
  
- # replace "," with forward slash
- $albumTitle =~ s/,/ \//g;
- # replace "&" with forward slash
+ $albumTitle =~ s/,/ /g;
  $albumTitle =~ s/&/\//g;
+ $albumTitle =~ s/Op\./op\./g;
+ $albumTitle =~ s/Opp\./op\./g;
+ $albumTitle =~ s/  / /g;
  
  # album title
  #<input type="hidden" name="name" value="Dvor�k / Tchaikovsky / Borodin: String Quartets">
