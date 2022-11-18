@@ -155,14 +155,15 @@ while ( my $line = <$fh> ) {
  chomp $line;
 
  if ( $line =~ m/window.__data__/i ) {
-  my @arr  = split( " = ", $line );
-  my $data = substr( $arr[1], 0, length( $arr[1] ) - 1 );
 
-  # print to file
-  #&dumpToFile( "data.json", $data );exit;
+  # sometimes there is more than 1 " = "
+  # find first {
+  my $pos = index($line,"{");
+  my $data = substr( $line, $pos);
+  $data = substr($data,0, length($data)-1);
 
   my $idagio = JSON->new->utf8->decode($data);
-  &writeHash( "release.txt", $idagio );    #exit;
+  &writeHash( "release.txt", $idagio );   
 
   $htmlPart = "";
   $htmlPart = &albumTitle( $idagio->{"entities"}->{"albums"} );

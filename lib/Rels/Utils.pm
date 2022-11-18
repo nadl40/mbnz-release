@@ -23,7 +23,7 @@ sub clean {
   $title =~ s/ In / in /;
   $title =~ s/Minor/minor/;
   $title =~ s/Major/major/;
-  $title =~ s/Op\./op\. /;
+  $title =~ s/Op\./op\. /g;
   $title =~ s/ op\. /, op\. /;
   $title =~ s/No\. /no\. /;
   $title =~ s/-Flat/-flat/;
@@ -38,7 +38,8 @@ sub clean {
   $title =~ s/ Hob\. /, Hob\. /;
   $title =~ s/ BWV /, BWV /;
   $title =~ s/ S /, S\. /;
-  $title =~ s/,,/,\. /;
+  #$title =~ s/,,/,\. /;
+  $title =~ s/,,/, /;
 
   # emebeded double quotes are not good
   $title =~ s/\"/\'/g;
@@ -47,6 +48,7 @@ sub clean {
   $title =~ s/\// no. /g;
 
   $title =~ s/\([^)]*\)//g;
+
   $title =~ s/  / /g;
   $title = trim($title);
 
