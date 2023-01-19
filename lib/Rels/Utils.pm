@@ -23,6 +23,7 @@ sub clean {
   $title =~ s/ In / in /;
   $title =~ s/Minor/minor/;
   $title =~ s/Major/major/;
+  $title =~ s/Op\ /op\. /g;
   $title =~ s/Op\./op\. /g;
   $title =~ s/ op\. /, op\. /;
   $title =~ s/No\. /no\. /;
@@ -46,10 +47,10 @@ sub clean {
 
   # "/" in title is really "no."
   $title =~ s/\// no. /g;
-
   $title =~ s/\([^)]*\)//g;
-
   $title =~ s/  / /g;
+  $title =~ s/ :/:/g;
+  
   $title = trim($title);
 
 

@@ -494,13 +494,15 @@ sub loadEnsembles {
   if ( $entity eq "ensembles" ) {
    foreach my $ensemble ( keys %{ $idagio->{$entity} } ) {
 
+    # MB identifies somme ensembles as instruments, skip it here altogether
+    
     undef $chorus;
     undef $keystrokes;
 
     # change if it does not match mb
     $hash->{$ensemble}->{"name"} = $idagio->{$entity}->{$ensemble}->{"name"};
 
-    if ( $idagio->{$entity}->{$ensemble}->{"name"} =~ m/choir|chorus/i ) {
+    if ( $idagio->{$entity}->{$ensemble}->{"name"} =~ m/choir|chorus|chór/i ) {
      $chorus     = "chorus";
      $keystrokes = "13";
     }
@@ -524,8 +526,8 @@ sub loadEnsembles {
     $hash->{$ensemble}->{"chorus"}     = $chorus;
     $hash->{$ensemble}->{"keystrokes"} = $keystrokes;
 
-   }
-  }
+   } # ensembles
+  } # ensemble entitity
  }
 
  return $hash;
@@ -1328,6 +1330,7 @@ sub setReleaseCredits {
   $size = @arr;
   $i    = 0;
   foreach my $ensemble (@arr) {
+  	
    $i++;
 
    my ( $artistId, $artistName ) = &getArtistMbid($ensemble);
@@ -1380,20 +1383,23 @@ sub getMainArtist {
    if ( $dataType eq "participants" ) {
 
     my @arr = @{ $hash->{$albumId}->{$dataType} };
-
+    #print Dumper(@arr);
     foreach my $artist (@arr) {
      my $type          = $artist->{"type"};
-     my $participation = $artist->{"participation"};
      my $artisName     = $artist->{"name"};
+     my $participation = $artist->{"participation"};
      $i++;
 
+     # add $i to create a sequence 
      #if ( $type eq 'soloist' and $participation >= .90 ) {
      if ( $type eq 'soloist' and $participation >= SOLOISTS_THRESHOLD ) {
-      $mainArtistHash->{$type}->{$artisName} = $participation;
+      #$mainArtistHash->{$type}->{$artisName} = $participation;
+      $mainArtistHash->{$type}->{$artisName} = $i;
      }
 
      if ( $type ne 'soloist' ) {
-      $mainArtistHash->{$type}->{$artisName} = $participation;
+      #$mainArtistHash->{$type}->{$artisName} = $participation;
+      $mainArtistHash->{$type}->{$artisName} = $i;
      }
 
     }
@@ -1404,7 +1410,11 @@ sub getMainArtist {
 
  }
 
- # sort by a counter in descending, on tie sort the keys ascending, swap b with a, exit on some occurence
+
+ #print Dumper($mainArtistHash);exit;
+
+ # this is for participation sort by a counter in descending, on tie sort the keys ascending, swap b with a, exit on some occurence
+ # this is for sequence sort by a counter in ascending, there are no ties, exit on same occurence
  my ( $sortHash, $sortedHash ) = {};
  my $sorted = "";
  foreach my $type ( keys %{$mainArtistHash} ) {
@@ -1412,9 +1422,11 @@ sub getMainArtist {
   $sortHash = $mainArtistHash->{$type};
 
   $sorted = "";
-  foreach my $soloist ( sort { $sortHash->{$b} <=> $sortHash->{$a} or $a cmp $b } keys %{$sortHash} ) {
-
+  #foreach my $soloist ( sort { $sortHash->{$b} <=> $sortHash->{$a} or $a cmp $b } keys %{$sortHash} ) {
+  #sequence a to b is ascending b to a is descending  
+  foreach my $soloist ( sort { $sortHash->{$a} <=> $sortHash->{$b} } keys %{$sortHash} ) {
    $sorted = $sorted . $soloist . ",";
+
   }
   $sorted = substr( $sorted, 0, length($sorted) - 1 );
 

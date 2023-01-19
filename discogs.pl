@@ -105,7 +105,6 @@ my %keystrokesMap = (
  "tenor vocals"         => 11
 );
 
-
 # first call get discogs same as mbnz.pl so the hash is ready for use
 # its problematic to create a pm, maybe later, for now just do an exec and read in the release hash
 # remove files created by discogs
@@ -185,7 +184,6 @@ if ($htmlPart) {
  $htmlForm = $htmlForm . $htmlPart;
 }
 
-
 # release event
 $htmlPart = "";
 $htmlPart = &albumRelease( $discogs->{"released"} );
@@ -204,9 +202,6 @@ if ($htmlPart) {
 # before recreatig idagio mess, think how rearrange release hash so it contains all what's needed form and relationships
 # use more comlpex example https://www.discogs.com/release/7527637-Richter-Rarities-With-Orchestra
 my $data = &setArtists( $discogs->{"tracks"} );
-
-#print Dumper($data);
-#exit;
 
 # add release works
 &setWorks( $discogs->{"tracks"}, $data );
@@ -244,7 +239,8 @@ $htmlForm = $htmlForm . '<script>document.forms[0].submit()</script>' . "\n";
 &dumpToFile( "form.html", $htmlForm );
 
 #need to write a file for relationship add
-$data->{"url"}=$discogs->{"url"}; 
+$data->{"url"} = $discogs->{"url"};
+
 # before writing it, set sorted tracks to a counter as for selenium those are just serial objects
 #print Dumper($data);exit;
 
@@ -266,7 +262,7 @@ if ( $launchBrowser eq 'y' ) {
 
 # write a serial relationship hash in the order of tracks, in an array of hashes.
 sub writeRelationshipPersistentSerialHash {
- my ($fileName, $recordings ) = @_;
+ my ( $fileName, $recordings ) = @_;
 
  &writeHash( $fileName, $recordings );
 
@@ -315,8 +311,10 @@ sub albumTracks {
 
   # title
   # title contains most likely work
-  if ( $discogs->{$track}->{"work"} ne $discogs->{$track}->{"title"} ) {
+  if ( trim( $discogs->{$track}->{"work"} ) ne trim( $discogs->{$track}->{"title"} ) ) {
    my $len      = length( $discogs->{$track}->{"work"} );
+
+   # extract work:title from title
    my $titleNew = &clean( substr( $discogs->{$track}->{"title"}, 0, $len ) . ":" . substr( $discogs->{$track}->{"title"}, $len + 1 ) );
    $tracks->{$track}->{"title"} = $titleNew;
   } else {
@@ -337,10 +335,7 @@ sub albumTracks {
   if ($composer) {
    $tracks->{$track}->{"composer"}->{"id"}   = $mbid;
    $tracks->{$track}->{"composer"}->{"name"} = $composer;
-
   }
-
-  #exit;
 
  }    # end of track
 
@@ -454,7 +449,7 @@ sub getComposerMBID {
  my $mbid = "";
 
  foreach my $composer ( keys %{$data} ) {
-  if ( $composer eq $composerLookup ) {
+  if ( $data->{$composer}->{"name"} eq $composerLookup ) {
    $mbid = $data->{$composer}->{"id"};
    return $mbid;
   }
@@ -548,12 +543,16 @@ sub setReleaseCredits {
  # composers first
  if ( $releaseArtists->{"composer"} ) {
 
-  # sort it
+  # this sorts in alpha order ?
   foreach my $artist ( sort { $a cmp $b } keys %{ $releaseArtists->{"composer"} } ) {
 
    #printDumper($artist);
    my $hash = {};
 
+   #remove sort sequence
+   #my @arr = split(":",$artist);
+   #my $artistHash = pop @arr;
+    
    # don't use discogs credited, lot's of cyrylics
    $hash->{"role"}       = "composer";
    $hash->{"credited"}   = $releaseArtists->{"composer"}->{$artist}->{"name"};
@@ -665,7 +664,7 @@ sub setWorks {
       if ( $type eq "composer" ) {
 
        foreach my $composerLookup ( keys %{ $data->{$type} } ) {
-        if ( $composerLookup eq $composer ) {
+        if ( $data->{$type}->{$composerLookup}->{"name"} eq $composer ) {
 
          #print Dumper($data->{$type}->{$composerLookup}->{"id"});exit;
          $mainWorks->{$work}->{"composerId"} = $data->{$type}->{$composerLookup}->{"id"};
@@ -697,11 +696,11 @@ sub setWorks {
  # loop thru tracks and get track works, sort it
  #print "\n";
 
- my $counter=0;
+ my $counter = 0;
  foreach my $track ( sort { $a cmp $b } keys %{$tracks} ) {
 
   $counter++;
-  
+
   my $work         = $tracks->{$track}->{"work"};
   my $title        = $tracks->{$track}->{"title"};
   my $workMBid     = $mainWorks->{$work}->{"workId"};
@@ -724,7 +723,7 @@ sub setWorks {
   if ( $workMBid && $position ) {
    ( $trackMBid, $mbTitle ) = &getTrackPositionMbid( $workMBid, $position, $title, $composerMBid );
   }
-  $data->{"works"}->{sprintf( "%03d",$counter)} = $trackMBid;
+  $data->{"works"}->{ sprintf( "%03d", $counter ) } = $trackMBid;
  }
 
  #print Dumper($data);exit(0);
@@ -743,6 +742,15 @@ sub setArtists {
  my $numberOfTracks = 0;
  my ( $volumeHash, $data ) = {};
 
+ #print Dumper($tracks);exit;
+
+ # add a sequence to each artitst type
+ #my ( $seqComposer, $seqEnsemble,  $seqConductor, $seqSoloist )    = (0,0,0,0);
+ #my ( $prevSoloist, $prevComposer, $prevEnsemble, $prevConductor ) = ("","","","");
+ my $seqHash = {};
+ my ($seqArtist,$seq)  = (0,0);
+ 
+
  foreach my $track ( sort { $a cmp $b } keys %{$tracks} ) {
 
   my @arr = split( "-", $track );
@@ -760,29 +768,37 @@ sub setArtists {
 
    $foundIt = "";
 
-   #print( $track, " ", $artist, "\n" );
+   # keep artist sequence as per tracks
+   if (!$seqHash->{$artist}) {
+  	 $seq++;
+  	 $seqHash->{$artist}=$seq;
+    } 
+  	$seqArtist = $seqHash->{$artist};
 
    # look for composer
    if ( $artist =~ m/(\(composer\))/i ) {
     $foundIt = "y";
-    $data    = &populateHash( $numberOfTracks ,"composer", $artist, $track, $data );
+
+    #if ( $prevComposer ne $artist ) { $seqComposer++; $prevComposer = $artist; }
+    $data = &populateHash( $seqArtist, $numberOfTracks, "composer", $artist, $track, $data );
+
    }
 
    # look for ensemble
    if ( $artist =~ m/(\(orch\))/i ) {
     $foundIt = "y";
-    $data    = &populateHash( $numberOfTracks, "ensemble", $artist, $track, $data );
+    $data = &populateHash( $seqArtist, $numberOfTracks, "ensemble", $artist, $track, $data );
    }
 
    # look for conductor
    if ( $artist =~ m/(\(con\))/i ) {
     $foundIt = "y";
-    $data    = &populateHash( $numberOfTracks,"conductor", $artist, $track, $data );
+    $data = &populateHash( $seqArtist, $numberOfTracks, "conductor", $artist, $track, $data );
    }
 
    # default soloist
    if ( !$foundIt ) {
-    $data = &populateHash( $numberOfTracks, "soloist", $artist, $track, $data );
+    $data = &populateHash( $seqArtist, $numberOfTracks, "soloist", $artist, $track, $data );
    }
 
   }
@@ -815,16 +831,36 @@ sub setArtists {
  #add volume and track stats
  $data->{"volumes"} = $volumeHash;
 
- #print Dumper($data); exit;
-
  return $data;
 
 }
 
+
+# keep artist sequence, later on used in artist sort
+sub getSeq {
+	my ($artist,$seq,$seqHash) = @_;
+
+  print "\n";
+  print ($artist,"\n");
+  print Dumper($seqHash);
+
+  if (!$seqHash->{$artist}) {
+  	$seq++;
+  	$seqHash->{$artist}=$seq;
+  } else {
+  	$seq = $seqHash->{$artist};
+  }
+
+  print Dumper($seqHash);
+  return ($seq,$seqHash);
+}	
+
+
 # populate hash with artists
 # one artist can play more than one instrument
 sub populateHash {
- my ( $absTrackNo, $type, $artist, $track, $data ) = @_;
+ my ( $seq, $absTrackNo, $type, $artist, $track, $data ) = @_;
+
 
  my ( $mbid, $artistName, $instrumentName ) = "";
  my $artistWork = trim( substr( $artist, 0, index( $artist, "\(" ) ) );
@@ -832,9 +868,16 @@ sub populateHash {
  #print( "looking up: ", $artistWork, "\n" );
  ( $mbid, $artistName ) = &getArtistMbid($artistWork);
 
+ # add sequence to $artistWork, later use in sort
+ my $artistWorkNoSort = $artistWork;
+ $artistWork = sprintf( "%03d", $seq ).":".$artistWork;
+ 
  # don't use mb name
- $data->{$type}->{$artistWork}->{"name"} = $artistWork;
+ $data->{$type}->{$artistWork}->{"name"} = $artistWorkNoSort;
  $data->{$type}->{$artistWork}->{"id"}   = $mbid;
+
+ # this is used when printing artists credits to a form in a sequence
+ #$data->{$type}->{$artistWork}->{"seq"} = sprintf( "%03d", $seq );
 
  #if soloist, need to look for instrument
  if ( $type eq "soloist" ) {
@@ -886,10 +929,10 @@ sub populateHash {
   #exit;
  }    # soloist
 
-  if ($instrumentName) {
-  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"tracks"} }, sprintf( "%03d",$absTrackNo) ;
+ if ($instrumentName) {
+  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"tracks"} }, sprintf( "%03d", $absTrackNo );
  } else {
-  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{"n/a"}->{"tracks"} }, sprintf( "%03d",$absTrackNo);
+  push @{ $data->{$type}->{$artistWork}->{"instrument"}->{"n/a"}->{"tracks"} }, sprintf( "%03d", $absTrackNo );
  }
 
  return $data;
@@ -994,15 +1037,14 @@ sub albumCat {
 
  my ( $albumCat, $htmlPart ) = "";
 
-$albumCat = $discogs;
+ $albumCat = $discogs;
 
  if ($albumCat) {
   $htmlPart = '<input type="hidden" name="labels.0.catalog_number" value="' . $albumCat . '">' . "\n";
  }
 
  return $htmlPart;
-	
-	
+
 }
 
 sub albumUPC {
