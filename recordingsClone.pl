@@ -48,10 +48,11 @@ my $configRef = &readConfig( $confPath, $confFile );    #read config file
 
 # get base url
 our $urlBase = "https://musicbrainz.org";
-if ( $configRef->{"local"}->{"local_url"} ) {
- $urlBase = $configRef->{"local"}->{"local_url"};
-}
-print( "url base ", $urlBase, "\n" );
+# there is no reason to use local url
+#if ( $configRef->{"local"}->{"local_url"} ) {
+# $urlBase = $configRef->{"local"}->{"local_url"};
+#}
+#print( "url base ", $urlBase, "\n" );
 
 # get sleep time if local not set
 our $sleepTime = $configRef->{"local"}->{"sleep_time_seconds"};
