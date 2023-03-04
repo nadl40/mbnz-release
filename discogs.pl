@@ -919,7 +919,7 @@ sub populateHash {
 
     #choir
     $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"id"}         = "";
-    $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"name"}       = "chorus";
+    $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"name"}       = "choir";
     $data->{$type}->{$artistWork}->{"instrument"}->{$instrumentName}->{"keystrokes"} = 13;
 
    }
@@ -943,9 +943,6 @@ sub albumURL {
  my ($albumUrl) = @_;
 
  if ($albumUrl) {
-
-  #<input type="hidden" name="urls.0.url" value="https://open.spotify.com/album/5YskZbV3lsAF66MfzfaI9J">
-  #<input type="hidden" name="urls.0.link_type" value="85">
 
   $htmlPart = '<input type="hidden" name="urls.0.url" value="' . $albumUrl . '">' . "\n";
   $htmlPart = $htmlPart . '<input type="hidden" name="urls.0.link_type" value="' . '76' . '">' . "\n";
