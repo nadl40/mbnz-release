@@ -137,17 +137,20 @@ my %mon         = (
  "December"  => "12"
 );
 
+# this no longer works as MB does not preserve sequence in the dialog
+# keep is still as it provides the flag that the insrument is a voice
+# use values like "soprano vocals"
 my %keystrokesMap = (
- "alto"          => 2,
- "bass-baritone" => 3,
- "contralto"     => 4,
- "treble"        => 5,
- "baritone"      => 6,
- "bass"          => 7,
- "countertenor"  => 8,
- "mezzo-soprano" => 9,
+ "alto"          => 1,
+ "bass-baritone" => 10,
+ "contralto"     => 12,
+ "treble"        => 8,
+ "baritone"      => 11,
+ "bass"          => 3,
+ "countertenor"  => 14,
+ "mezzo-soprano" => 15,
  "soprano"       => 10,
- "tenor"         => 11
+ "tenor"         => 4
 );
 
 
@@ -188,7 +191,7 @@ while ( my $line = <$fh> ) {
    $htmlForm = $htmlForm . $htmlPart;
   }
 
-  # release event is not digital releae, it's main recordings release
+  # release event is not digital releae, it's main copyright recordings release
   #$htmlPart = "";
   #$htmlPart = &albumRelease( $idagio->{"entities"}->{"albums"} );
   #if ($htmlPart) {
@@ -328,8 +331,6 @@ sub getRelationshipsByTracks {
        $venueName = $venueName . " " . $recordings->{$recording}->{$entity}->{"location"}->{"name"};
       }
 
-      #my $track = $trackSeq->{$track};
-
       if ($venueId) {
        $hash->{$entity}->{$venueId}->{"name"} = $venueName;
        push @{ $hash->{$entity}->{$venueId}->{"venue"}->{"venue"}->{"tracks"} }, $trackNo;
@@ -359,7 +360,6 @@ sub getRelationshipsByTracks {
 
       my $personId = $recordings->{$recording}->{$entity};
 
-      #my $track    = $trackSeq->{$track};
       if ($personId) {
        $hash->{$entity}->{$personId}->{"name"} = $persons->{$personId}->{"name"};
        $hash->{$entity}->{$personId}->{"id"}   = $persons->{$personId}->{"id"};
@@ -378,19 +378,17 @@ sub getRelationshipsByTracks {
 
        my $personId = $ensembleId;
 
-       #my $track    = $trackSeq->{$track};
-
        if ( $ensembles->{$ensembleId}->{"chorus"} ) {
 
         $hash->{"soloists"}->{$personId}->{"name"} = $ensembles->{$ensembleId}->{"name"};
         $hash->{"soloists"}->{$personId}->{"id"}   = $ensembles->{$ensembleId}->{"id"};
 
         my $instrument = $ensembles->{$ensembleId}->{"chorus"};
-        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"name"}         = $ensembles->{$ensembleId}->{"chorus"};
+        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"name"}         = "choir";
         $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"}   = $ensembles->{$ensembleId}->{"keystrokes"};
-        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"instrumentId"} = '';
+        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"id"} = '';
 
-        push @{ $hash->{"soloists"}->{$personId}->{"instrument"}->{"n/a"}->{"tracks"} }, $trackNo;
+        push @{ $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"tracks"} }, $trackNo;
 
        } else {
 
@@ -494,7 +492,7 @@ sub loadEnsembles {
   if ( $entity eq "ensembles" ) {
    foreach my $ensemble ( keys %{ $idagio->{$entity} } ) {
 
-    # MB identifies somme ensembles as instruments, skip it here altogether
+    # MB identifies some ensembles as instruments, skip it here altogether
     
     undef $chorus;
     undef $keystrokes;
@@ -502,7 +500,8 @@ sub loadEnsembles {
     # change if it does not match mb
     $hash->{$ensemble}->{"name"} = $idagio->{$entity}->{$ensemble}->{"name"};
 
-    if ( $idagio->{$entity}->{$ensemble}->{"name"} =~ m/choir|chorus|chór/i ) {
+    # choirs are vocie choir vocals 
+    if ( $idagio->{$entity}->{$ensemble}->{"name"} =~ m/choir|chorus|chór|chor/i ) {
      $chorus     = "chorus";
      $keystrokes = "13";
     }
@@ -684,13 +683,13 @@ sub getImages {
 sub albumTracks {
  my ( $idagio, @releaseCredit ) = @_;
 
- my $workData  = &loadWork($idagio);             #print Dumper($workData);#exit;
- my $allPieces = &loadAllWorkPieces($idagio);    #print Dumper($allPieces);exit;
+ my $workData  = &loadWork($idagio);            
+ my $allPieces = &loadAllWorkPieces($idagio);   
  my $composers = &loadComposers($idagio);
 
  # this is the sequence of tracks on an album
  my $tracks = {};
- @tracksArr = &loadTracks($idagio);              #print Dumper(@tracksArr); exit;
+ @tracksArr = &loadTracks($idagio);             
 
  # add mbid to man work
  foreach my $workId ( keys %{$workData} ) {
@@ -726,7 +725,6 @@ sub albumTracks {
     my $workPart   = $idagio->{"pieces"}->{$piece}->{"workpart"};
     my $workId     = $idagio->{"workparts"}->{$workPart}->{"work"};
     my $workMbid   = $workData->{$workId}->{"mbid"};
-    #my $workTitle  = $workData->{$workId}->{"title"};
     my $composerId = $idagio->{"works"}->{$workId}->{"composer"};
 
     # assign position within work
@@ -788,7 +786,6 @@ sub albumTracks {
 
  my $htmlForm = &formatTracksForm($trackHash);
 
- #exit(0);
  return ( $trackHash, $htmlForm, $tracks );
 
 }
@@ -903,17 +900,12 @@ sub loadTracks {
 
     @tracks = @{ $idagio->{"albums"}->{$id}->{$type} };
 
-    #foreach my $track (@arr) {
-    # $i++;
-    # $tracks->{$track} = $i;
-    #}
    }
 
   }
 
  }
 
- #print Dumper(@tracks);exit;
  return @tracks;
 }
 
@@ -1109,7 +1101,6 @@ sub albumUPC {
  }
 
  # album title
- #<input type="hidden" name="barcode" value="00028944555127">
  if ($albumUPC) {
   $htmlPart = '<input type="hidden" name="barcode" value="' . $albumUPC . '">' . "\n";
 
@@ -1391,14 +1382,11 @@ sub getMainArtist {
      $i++;
 
      # add $i to create a sequence 
-     #if ( $type eq 'soloist' and $participation >= .90 ) {
      if ( $type eq 'soloist' and $participation >= SOLOISTS_THRESHOLD ) {
-      #$mainArtistHash->{$type}->{$artisName} = $participation;
       $mainArtistHash->{$type}->{$artisName} = $i;
      }
 
      if ( $type ne 'soloist' ) {
-      #$mainArtistHash->{$type}->{$artisName} = $participation;
       $mainArtistHash->{$type}->{$artisName} = $i;
      }
 
@@ -1410,8 +1398,6 @@ sub getMainArtist {
 
  }
 
-
- #print Dumper($mainArtistHash);exit;
 
  # this is for participation sort by a counter in descending, on tie sort the keys ascending, swap b with a, exit on some occurence
  # this is for sequence sort by a counter in ascending, there are no ties, exit on same occurence
