@@ -83,10 +83,16 @@ if ( $configRef->{"local"}->{"local_url"} ) {
 
 print Dumper ($idagioUrl);
 
+# set some vars
+my $profileCounter = 0;
+
+#load valid instruments
+my $validInstrument = &loadValidInstrument();
+
 my ( $cmd, $return ) = "";
 my $artistCounter = 0;
 
-$cmd    = 'wget ' . $idagioUrl . " -O current.html";
+$cmd    = 'wget -q ' . $idagioUrl . " -O current.html";
 $return = `$cmd`;
 
 use constant HTML_FILE => 'current.html';
@@ -137,22 +143,19 @@ my %mon         = (
  "December"  => "12"
 );
 
-# this no longer works as MB does not preserve sequence in the dialog
-# keep is still as it provides the flag that the insrument is a voice
-# use values like "soprano vocals"
-my %keystrokesMap = (
- "alto"          => 1,
- "bass-baritone" => 10,
- "contralto"     => 12,
- "treble"        => 8,
- "baritone"      => 11,
- "bass"          => 3,
- "countertenor"  => 14,
- "mezzo-soprano" => 15,
- "soprano"       => 10,
- "tenor"         => 4
-);
-
+#init an idagio voice lookup hash
+my $idagioVoice = {};
+$idagioVoice->{"bass"}            = 1;
+$idagioVoice->{"tenor"}           = 1;
+$idagioVoice->{"soprano"}         = 1;
+$idagioVoice->{"mezzo-soprano"}   = 1;
+$idagioVoice->{"alto"}            = 1;
+$idagioVoice->{"baritone"}        = 1;
+$idagioVoice->{"mezzo-contralto"} = 1;
+$idagioVoice->{"mezzo-soprano"}   = 1;
+$idagioVoice->{"voice"}           = 1;
+$idagioVoice->{"countertenor"}    = 1;
+$idagioVoice->{"bass-baritone"}   = 1;
 
 while ( my $line = <$fh> ) {
  chomp $line;
@@ -161,12 +164,12 @@ while ( my $line = <$fh> ) {
 
   # sometimes there is more than 1 " = "
   # find first {
-  my $pos = index($line,"{");
-  my $data = substr( $line, $pos);
-  $data = substr($data,0, length($data)-1);
+  my $pos  = index( $line, "{" );
+  my $data = substr( $line, $pos );
+  $data = substr( $data, 0, length($data) - 1 );
 
   my $idagio = JSON->new->utf8->decode($data);
-  &writeHash( "release.txt", $idagio );   
+  &writeHash( "release.txt", $idagio );
 
   $htmlPart = "";
   $htmlPart = &albumTitle( $idagio->{"entities"}->{"albums"} );
@@ -370,7 +373,8 @@ sub getRelationshipsByTracks {
      }
 
      ### ensembles ###
-     # choirs should go to artists as their instrument is choir vocals
+     # choirs should go to vocals as their instrument is choir vocals
+     # and string quartets, quintets etc.  are instruments
      if ( $entity eq "ensembles" ) {
       @arr = @{ $recordings->{$recording}->{$entity} };
 
@@ -378,27 +382,35 @@ sub getRelationshipsByTracks {
 
        my $personId = $ensembleId;
 
-       if ( $ensembles->{$ensembleId}->{"chorus"} ) {
+       # catch strings idagio roles from profiles
+       if ( $ensembles->{$ensembleId}->{"role"} && $ensembles->{$ensembleId}->{"role"} =~ m/choir|string/ ) {
+
+        my $instrument = $ensembles->{$ensembleId}->{"role"};
+
+        # set keystroke value to 1 only for choir
+        my $keystrokes = "";
+        if ( $ensembles->{$ensembleId}->{"role"} =~ m/choir/i ) {
+         $keystrokes = "1";
+         $instrument = "voice";
+        }
 
         $hash->{"soloists"}->{$personId}->{"name"} = $ensembles->{$ensembleId}->{"name"};
         $hash->{"soloists"}->{$personId}->{"id"}   = $ensembles->{$ensembleId}->{"id"};
 
-        my $instrument = $ensembles->{$ensembleId}->{"chorus"};
-        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"name"}         = "choir";
-        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"}   = $ensembles->{$ensembleId}->{"keystrokes"};
-        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"id"} = '';
+        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"name"}       = $ensembles->{$ensembleId}->{"role"};
+        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"} = $keystrokes;    # just a flag, values are irrelevant
+        $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"id"}         = '';
 
         push @{ $hash->{"soloists"}->{$personId}->{"instrument"}->{$instrument}->{"tracks"} }, $trackNo;
-
        } else {
 
-        my $instrument = $ensembles->{$ensembleId}->{"chorus"};
+        # regular orchestra
+        my $instrument = $ensembles->{$ensembleId}->{"role"};
         $hash->{$entity}->{$ensembleId}->{"name"} = $ensembles->{$ensembleId}->{"name"};
         $hash->{$entity}->{$ensembleId}->{"id"}   = $ensembles->{$ensembleId}->{"id"};
-        push @{ $hash->{$entity}->{$personId}->{"instrument"}->{"n/a"}->{"tracks"} }, $trackNo;
+        push @{ $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"tracks"} }, $trackNo;
        }
       }
-
      }
 
      ### soloists ###
@@ -412,16 +424,26 @@ sub getRelationshipsByTracks {
 
        my $instrumentId = $performerId->{"instrument"};
 
-       #my $track        = $trackSeq->{$track};
-
        $hash->{$entity}->{$personId}->{"name"} = $persons->{$personId}->{"name"};
        $hash->{$entity}->{$personId}->{"id"}   = $persons->{$personId}->{"id"};
 
-       my $instrument = $instruments->{$instrumentId}->{"name"};
-       $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"id"}         = $instruments->{$instrumentId}->{"id"};
-       $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"name"}       = $instruments->{$instrumentId}->{"name"};
-       $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"} = $instruments->{$instrumentId}->{"keystrokes"};
+       # if type voice, use it, otherwise instrument name
+       my $instrument = "";
+       if ( $instruments->{$instrumentId}->{"type"} eq "voice" ) {
+        $instrument = "voice";
+       } else {
+        $instrument = $instruments->{$instrumentId}->{"name"};
+       }
 
+       $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"id"}   = $instruments->{$instrumentId}->{"id"};
+       $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"name"} = $instruments->{$instrumentId}->{"name"};
+
+       # if we have id for an instrument then don't assign keystrokes, it's not a voice
+       if ( $instrument ne "voice" ) {
+        $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"} = "";
+       } else {
+        $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"keystrokes"} = "1";
+       }
        push @{ $hash->{$entity}->{$personId}->{"instrument"}->{$instrument}->{"tracks"} }, $trackNo;
 
       }
@@ -455,6 +477,8 @@ sub getRelationshipsByTracks {
 
  }
 
+ #print Dumper($hash);
+ #exit;
  return $hash;
 }
 
@@ -483,8 +507,6 @@ sub loadEnsembles {
  my ( $idagio, @releaseCredit ) = @_;
 
  my ( $artistName, $mbid ) = "";
- my $chorus     = "";
- my $keystrokes = "";
  my $joinphrase = "";
 
  my $hash = {};
@@ -492,21 +514,19 @@ sub loadEnsembles {
   if ( $entity eq "ensembles" ) {
    foreach my $ensemble ( keys %{ $idagio->{$entity} } ) {
 
-    # MB identifies some ensembles as instruments, skip it here altogether
-    
-    undef $chorus;
-    undef $keystrokes;
+    # MB identifies some ensembles as instruments
+    # try to get choir, string quartet, string quintet etc from idagio profile
+
+    print( "looking up in idagio: ", $idagio->{$entity}->{$ensemble}->{"name"} );
+    my $role = &getIdagioProfile( $idagio->{$entity}->{$ensemble}->{"id"} );
+    print( " ", $role, "\n" );
+    $hash->{$ensemble}->{"role"} = $role;
 
     # change if it does not match mb
     $hash->{$ensemble}->{"name"} = $idagio->{$entity}->{$ensemble}->{"name"};
 
-    # choirs are vocie choir vocals 
-    if ( $idagio->{$entity}->{$ensemble}->{"name"} =~ m/choir|chorus|chór|chor/i ) {
-     $chorus     = "chorus";
-     $keystrokes = "13";
-    }
-
     ( $mbid, $joinphrase ) = &matchMbidPersons( $idagio->{$entity}->{$ensemble}->{"name"}, @releaseCredit );
+
     if ($mbid) {
      $hash->{$ensemble}->{"id"} = $mbid;
     } else {
@@ -521,22 +541,68 @@ sub loadEnsembles {
      }
     }    #end of mbid
 
-    # always add chorus indicator
-    $hash->{$ensemble}->{"chorus"}     = $chorus;
-    $hash->{$ensemble}->{"keystrokes"} = $keystrokes;
+    $hash->{$ensemble}->{"keystrokes"} = "";
 
-   } # ensembles
-  } # ensemble entitity
+   }    # ensembles
+  }    # ensemble entitity
  }
 
  return $hash;
 
 }
 
-# lookup keystrokes for voice instruments
-sub getKeyStrokes {
+# get Idagio Profile
+sub getIdagioProfile {
+ my ($id) = @_;
 
-}
+ my $functionRole     = "";
+ my $fileName         = "profile.html";
+ my $idagioProfileUrl = "https://app.idagio.com/profiles/" . $id;
+
+ #print Dumper($idagioProfileUrl);
+
+ my $cmd = 'wget -q ' . $idagioProfileUrl . " -O " . $fileName;
+
+ $return = `$cmd`;
+
+ $profileCounter++;
+ open( my $fh, '<', $fileName )
+   or die "Could not open file $fileName $!";
+
+ while ( my $line = <$fh> ) {
+  chomp $line;
+
+  if ( $line =~ m/window.__data__/i ) {
+
+   # sometimes there is more than 1 " = "
+   # find first {
+   my $pos  = index( $line, "{" );
+   my $data = substr( $line, $pos );
+   $data = substr( $data, 0, length($data) - 1 );
+
+   my $profile = JSON->new->utf8->decode($data);
+   &writeHash( "profile-" . sprintf( "%03d", $profileCounter ) . ".txt", $profile );
+
+   foreach my $profileNo ( keys %{ $profile->{"entities"}->{"profiles"} } ) {
+
+    if ( $profileNo eq $id ) {
+
+     # it's an array, grab first function
+     if ( $profile->{"entities"}->{"profiles"}->{$profileNo}->{"functions"} ) {
+
+      my @arr = @{ $profile->{"entities"}->{"profiles"}->{$profileNo}->{"functions"} };
+      $functionRole = $arr[0];
+      next;
+     }
+    }    # profile
+   }    # each profile
+  }    # window line
+
+ }    # while
+
+ return ($functionRole);
+
+}    #end sub
 
 #load Instruments
 sub loadInstruments {
@@ -544,49 +610,44 @@ sub loadInstruments {
 
  my ( $searchUrl, $url02, $instrumentName, $mbid ) = "";
 
- my $keystrokes = "";
- my $voice      = "";
-
  my $hash = {};
  foreach my $entity ( keys %{$idagio} ) {
   if ( $entity eq "instruments" ) {
    foreach my $instrument ( keys %{ $idagio->{$entity} } ) {
 
-    $keystrokes = "";
-    $voice      = "";
+    # preserve idagio instrument descr
+    my $idagioDescr = trim( lc( $idagio->{$entity}->{$instrument}->{"title"} ) );
+    $hash->{$instrument}->{"idagio_name"} = $idagioDescr;
 
-    # change if it does not match mb
-    $hash->{$instrument}->{"name"} = lc( $idagio->{$entity}->{$instrument}->{"title"} );
+    # here
+    # MB does not recognize voice as instruments, it's a js selections when entering voice
+    # catch classical voice and skip instrument lookup
+    if ( $idagioVoice->{$idagioDescr} ) {
+     $hash->{$instrument}->{"id"}   = "";
+     $hash->{$instrument}->{"name"} = $idagioDescr;
+     $hash->{$instrument}->{"type"} = "voice";
+     next;
+    }
 
-    # print Dumper($idagio->{$entity}->{$instrument}->{"title"});
-    if ( $hash->{$instrument}->{"name"} =~ m/soprano|tenor|bass|baritone/i && $hash->{$instrument}->{"name"} ne "bassoon" ) {
+    # proper instrument, do lookup from idagio to MB
+    # translate from idagio to MB
+    my $mbInstrumentLookup = $validInstrument->{$idagioDescr};
+    if ( !$mbInstrumentLookup ) {
+     print( "there is no instrument translation for >>>", $idagioDescr, "<<< between idagio and MB, add to idagioRoles.csv and rerun.\nexit.\n" );
+     exit;
+    }
 
-     $voice = $idagio->{$entity}->{$instrument}->{"title"};
-     print( "looking up ", $idagio->{$entity}->{$instrument}->{"title"}, " skipped \n" );
+    # get MB instrument id, 100% match
+    my $mbName = ""; 
+    ($mbid,$mbName) = &getInstrumentMbid($mbInstrumentLookup);
 
-     $keystrokes = $keystrokesMap{ lc($voice) };
-     if ( !$keystrokes ) {
-      print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-      print( "voice keystrokes not found ", $voice, " exit.", "\n" );
-      print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-      exit(0);
-     }
-
-     print Dumper($voice);
-     print Dumper($keystrokes);
-
-     $hash->{$instrument}->{"id"}         = "";
-     $hash->{$instrument}->{"keystrokes"} = $keystrokes;
-
+    if ($mbid) {
+     $hash->{$instrument}->{"id"}   = $mbid;
+     $hash->{$instrument}->{"name"} = $mbName;
+     $hash->{$instrument}->{"type"} = "instrument";
     } else {
-
-     ( $mbid, $instrumentName ) = &getInstrumentMbid( lc( $idagio->{$entity}->{$instrument}->{"title"} ) );
-
-     if ($mbid) {
-      $hash->{$instrument}->{"id"}         = $mbid;
-      $hash->{$instrument}->{"name"}       = $instrumentName;
-      $hash->{$instrument}->{"keystrokes"} = $keystrokes;
-     }
+     print( "MB does not have >>>", $idagioDescr, "<<< instrument defined, exiting.\n" );
+     exit;
     }
 
    }
@@ -666,13 +727,12 @@ sub getImages {
 
  foreach my $id ( keys %{$idagio} ) {
 
-    if ( $idagio->{$id}->{"bookletUrl"} ) {
-     $bookletUrl = $idagio->{$id}->{"bookletUrl"};
-    }
-    if ( $idagio->{$id}->{"imageUrl"} ) {
-     $imageUrl = $idagio->{$id}->{"imageUrl"};
-    }
-   
+  if ( $idagio->{$id}->{"bookletUrl"} ) {
+   $bookletUrl = $idagio->{$id}->{"bookletUrl"};
+  }
+  if ( $idagio->{$id}->{"imageUrl"} ) {
+   $imageUrl = $idagio->{$id}->{"imageUrl"};
+  }
 
   #}
  }
@@ -683,13 +743,13 @@ sub getImages {
 sub albumTracks {
  my ( $idagio, @releaseCredit ) = @_;
 
- my $workData  = &loadWork($idagio);            
- my $allPieces = &loadAllWorkPieces($idagio);   
+ my $workData  = &loadWork($idagio);
+ my $allPieces = &loadAllWorkPieces($idagio);
  my $composers = &loadComposers($idagio);
 
  # this is the sequence of tracks on an album
  my $tracks = {};
- @tracksArr = &loadTracks($idagio);             
+ @tracksArr = &loadTracks($idagio);
 
  # add mbid to man work
  foreach my $workId ( keys %{$workData} ) {
@@ -740,18 +800,18 @@ sub albumTracks {
     $title = &clean($title);
 
     # if work and subwork are identical, then collapse
-    my @arr = split(":",$title);
-    if ($arr[0] && $arr[1] ) {
-    	my $main = trim($arr[0]);
-    	$main =~ s/,//i;
-    	my $part = trim($arr[1]);
-    	$part =~ s/,//i;
-    	
-    	if ($main eq $part) {
-    		$title = $main;
-      }
-    } # end of collapse
-    
+    my @arr = split( ":", $title );
+    if ( $arr[0] && $arr[1] ) {
+     my $main = trim( $arr[0] );
+     $main =~ s/,//i;
+     my $part = trim( $arr[1] );
+     $part =~ s/,//i;
+
+     if ( $main eq $part ) {
+      $title = $main;
+     }
+    }    # end of collapse
+
     # now get composer name
     my $composerName = $idagio->{"persons"}->{$composerId}->{"name"};
 
@@ -773,6 +833,7 @@ sub albumTracks {
      ( $trackHash->{$trackNo}->{"work_mbid"}, $trackHash->{$trackNo}->{"mbTitle"} ) =
        &getTrackPositionMbid( $workMbid, $position, $title, $composerMbid );
     } else {
+
      # advance printline so it stands out
      print "\n";
      ( $trackHash->{$trackNo}->{"work_mbid"}, $trackHash->{$trackNo}->{"mbTitle"} ) = &getWorkAliasesMbid( $composerMbid, $title );
@@ -817,8 +878,8 @@ sub loadAllWorkPieces {
 
     # first deliminator "|" should be changed to ": " as this is the way to identify top work
     # the rest is replaced with comma
-    $title =~ s/\|/: /; 
-    $title =~ s/\|/, /g; 
+    $title =~ s/\|/: /;
+    $title =~ s/\|/, /g;
 
     $allPieces->{$pieceId} = $title;
 
@@ -832,7 +893,7 @@ sub loadAllWorkPieces {
 # format html for tracks
 sub formatTracksForm {
  my ($trackHash) = @_;
- 
+
  #print Dumper($trackHash);exit;
 
  my $htmlForm = '<input type="hidden" name="mediums.0.format" value="Digital Media">' . "\n";
@@ -1164,7 +1225,7 @@ sub albumTitle {
  my ($idagio) = @_;
 
  my ( $albumTitle, $htmlPart ) = "";
- 
+
  foreach my $id ( keys %{$idagio} ) {
   $albumTitle = $idagio->{$id}->{"title"};
  }
@@ -1172,17 +1233,17 @@ sub albumTitle {
  # format the title
  # Composer:  is only valid when there are multiple composers
  # deal with multi composers later
- my @arr = split(":",$albumTitle);
- if ($arr[1]) {
- 	$albumTitle = trim($arr[1]);
+ my @arr = split( ":", $albumTitle );
+ if ( $arr[1] ) {
+  $albumTitle = trim( $arr[1] );
  }
- 
+
  $albumTitle =~ s/,/ /g;
  $albumTitle =~ s/&/\//g;
  $albumTitle =~ s/Op\./op\./g;
  $albumTitle =~ s/Opp\./op\./g;
  $albumTitle =~ s/  / /g;
- 
+
  # album title
  #<input type="hidden" name="name" value="Dvor�k / Tchaikovsky / Borodin: String Quartets">
  if ($albumTitle) {
@@ -1321,7 +1382,7 @@ sub setReleaseCredits {
   $size = @arr;
   $i    = 0;
   foreach my $ensemble (@arr) {
-  	
+
    $i++;
 
    my ( $artistId, $artistName ) = &getArtistMbid($ensemble);
@@ -1374,6 +1435,7 @@ sub getMainArtist {
    if ( $dataType eq "participants" ) {
 
     my @arr = @{ $hash->{$albumId}->{$dataType} };
+
     #print Dumper(@arr);
     foreach my $artist (@arr) {
      my $type          = $artist->{"type"};
@@ -1381,7 +1443,7 @@ sub getMainArtist {
      my $participation = $artist->{"participation"};
      $i++;
 
-     # add $i to create a sequence 
+     # add $i to create a sequence
      if ( $type eq 'soloist' and $participation >= SOLOISTS_THRESHOLD ) {
       $mainArtistHash->{$type}->{$artisName} = $i;
      }
@@ -1398,7 +1460,6 @@ sub getMainArtist {
 
  }
 
-
  # this is for participation sort by a counter in descending, on tie sort the keys ascending, swap b with a, exit on some occurence
  # this is for sequence sort by a counter in ascending, there are no ties, exit on same occurence
  my ( $sortHash, $sortedHash ) = {};
@@ -1408,8 +1469,9 @@ sub getMainArtist {
   $sortHash = $mainArtistHash->{$type};
 
   $sorted = "";
+
   #foreach my $soloist ( sort { $sortHash->{$b} <=> $sortHash->{$a} or $a cmp $b } keys %{$sortHash} ) {
-  #sequence a to b is ascending b to a is descending  
+  #sequence a to b is ascending b to a is descending
   foreach my $soloist ( sort { $sortHash->{$a} <=> $sortHash->{$b} } keys %{$sortHash} ) {
    $sorted = $sorted . $soloist . ",";
 
@@ -1421,6 +1483,26 @@ sub getMainArtist {
 
  return $sortedHash;
 
+}
+
+# load valid roles from csv file into a hash
+sub loadValidInstrument {
+ my $validInstrument = {};
+ my $instrumentsFile = "idagioRoles.csv";
+
+ open( my $fh, '<', $instrumentsFile )
+   or die "Could not open file $instrumentsFile $!";
+
+ while ( my $line = <$fh> ) {
+  chomp $line;
+  my @arr = split( ",", $line );
+  if ( $arr[1] ) {
+   $validInstrument->{ $arr[0] } = $arr[1];
+  }
+
+ }
+
+ return $validInstrument;
 }
 
 __END__

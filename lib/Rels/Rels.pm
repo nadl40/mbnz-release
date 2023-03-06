@@ -1,10 +1,11 @@
 use Data::Dumper::Simple;
 use Text::Tabs;
 
-use constant DISTANCE_TOLERANCE_ARTIST 	=> 1;     # artist
-use constant DISTANCE_TOLERANCE_WORK 		=> 15;    # work
+use constant DISTANCE_TOLERANCE_ARTIST => 1;     # artist
+use constant DISTANCE_TOLERANCE_WORK   => 15;    # work
 
-my $counterArtist    = 0;
+my $counterArtist      = 0;
+my $counterInstruments = 0;
 $tabstop = 3;
 
 # export module
@@ -43,6 +44,7 @@ sub getTrackPositionMbid {
   $mainWorkXML->{$Mbid} = $xml;
  } else {
   $xml = $mainWorkXML->{$Mbid};
+
   #print("cache at work-> main work\n");
  }
 
@@ -86,13 +88,13 @@ sub getTrackPositionMbid {
 # get MB Id for work using title and aliases, especially the last one is usefull
 sub getWorkAliasesMbid {
 
- my ( $Mbid, $title	 ) = @_;
+ my ( $Mbid, $title ) = @_;
 
  my $firstPrint = "y";
 
  my $url01 = $urlBase . '/ws/2/work?query=';
 
- print  ( "\tsearching MB for title/alias: ", $title );
+ print( "\tsearching MB for title/alias: ", $title );
  my $url02_1 = "work:" . uri_escape_utf8($title);
  my $url02_2 = uri_escape_utf8(" AND ") . "arid:" . $Mbid;
 
@@ -114,7 +116,7 @@ sub getWorkAliasesMbid {
  &dumpToFile( "workAlias-" . $counterAlias . ".xml", $xml );    #exit(0);
  &dumpToFile( "workAlias-" . $counterAlias . ".cmd", $cmd );
 
- my ( $score, $MbidWork, $mbIName, $mbTitle,$titleRet ) = "";
+ my ( $score, $MbidWork, $mbIName, $mbTitle, $titleRet ) = "";
  my $lowScore = '999';
 
  # ususally the first returned is the most correct.
@@ -227,6 +229,7 @@ sub getWorkMbid {
 
     foreach my $artistName ( $relation->findnodes("artist") ) {
      my $composerId = $artistName->getAttribute("id");
+
      #print Dumper($mbId,$composerId);
      if ( $composerId eq $mbId ) {
 
@@ -266,9 +269,9 @@ sub getWorkMbid {
 sub getInstrumentMbid {
  my ($name) = @_;
 
- if ( $lookup->{$name} ) {
+ my ( $instrumentId, $instrumentName, $distance ) = ( "", "", "" );
 
-  #print expand ( "\tfound in lookup", "\n" );
+ if ( $lookup->{$name} ) {
   return ( $lookup->{$name}->{"instrumentId"}, $lookup->{$name}->{"instrumentName"} );
  }
 
@@ -290,23 +293,26 @@ sub getInstrumentMbid {
  $xml =~ s/ns2:score/score/ig;
 
  #save to file
- &dumpToFile( "instrument.xml", $xml );    #exit(0);
- &dumpToFile( "instrument.cmd", $cmd );    #exit(0);
-                                           #exit;
+ $counterInstruments++;
+ &dumpToFile( "instrument-" . sprintf( "%03d", $counterInstruments ) . ".xml", $xml );    #exit(0);
+ &dumpToFile( "instrument-" . sprintf( "%03d", $counterInstruments ) . ".cmd", $cmd );    #exit(0);
+                                                                                          #exit;
  my $dom = XML::LibXML->load_xml( string => $xml );
 
- my ( $instrumentId, $instrumentName, $distance ) = "";
-
+ my $i = 0;
  foreach my $instrument ( $dom->findnodes("/metadata/instrument-list/instrument") ) {
 
-  $instrumentName = $instrument->findvalue("name");
-  $distance       = distance( $name, $instrumentName, { ignore_diacritics => 1 } );
+  my $instrumentNameMB = $instrument->findvalue("name");
 
-  #print( $distance, " between ", $name, '<-->', $instrumentName, "\n" );
+  $distance = distance( $name, $instrumentNameMB, { ignore_diacritics => 1 } );
 
-  if ( $distance <= 1 ) {
+  $i++;
+
+  #if ( $i > 1 ) { print "\n" } ;   print( $distance, " between ", $name, '<-->', $instrumentNameMB, "\n" );
+
+  if ( $distance == 0 ) {
    $instrumentId   = $instrument->getAttribute("id");
-   $instrumentName = $instrument->findvalue("name");
+   $instrumentName = $instrumentNameMB;
 
    $lookup->{$name}->{"instrumentId"}   = $instrumentId;
    $lookup->{$name}->{"instrumentName"} = $instrumentName;
@@ -314,29 +320,7 @@ sub getInstrumentMbid {
    return ( $instrumentId, $instrumentName );
   }
 
-  #also check aliases
-  my $names = "";
-  foreach my $alias ( $instrument->findnodes("alias-list") ) {
-
-   $names = join "%", map { $_->to_literal(); } $alias->findnodes('./alias');
-   my @arr = split( "%", $names );
-   foreach my $alias (@arr) {
-    $distance = distance( $name, $alias, { ignore_diacritics => 1 } );
-
-    #print expand( "\talias ", $distance, " between ", $name, '<-->', $alias, "\n" );
-
-    if ( $distance <= 1 ) {
-     $instrumentId   = $instrument->getAttribute("id");
-     $instrumentName = $instrument->findvalue("name");
-
-     $lookup->{$name}->{"instrumentId"}   = $instrumentId;
-     $lookup->{$name}->{"instrumentName"} = $instrumentName;
-
-     return ( $instrumentId, $instrumentName );
-    }
-
-   }
-  }    # end of aliases
+  #do not check aliases
 
  }
 
@@ -395,8 +379,8 @@ sub getMBArtist {
 
  #save to file
  $counterArtist++;
- &dumpToFile( "artist-".$counterArtist.".xml", $xml );    #exit(0);
- &dumpToFile( "artist-".$counterArtist.".cmd", $cmd );    #exit(0);
+ &dumpToFile( "artist-" . $counterArtist . ".xml", $xml );    #exit(0);
+ &dumpToFile( "artist-" . $counterArtist . ".cmd", $cmd );    #exit(0);
 
  my ( $artistId, $mbArtistName, $distance ) = "";
 
