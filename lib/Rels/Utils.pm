@@ -27,6 +27,9 @@ sub clean {
   $title =~ s/Op\./op\. /g;
   $title =~ s/ op\. /, op\. /;
   $title =~ s/No\. /no\. /;
+
+  # this might missfire
+  $title =~ s/ No / no\. /;
   $title =~ s/-Flat/-flat/;
   $title =~ s/ Flat/-flat/;
   $title =~ s/ flat/-flat/;
@@ -39,20 +42,25 @@ sub clean {
   $title =~ s/ Hob\. /, Hob\. /;
   $title =~ s/ BWV /, BWV /;
   $title =~ s/ S /, S\. /;
+
   #$title =~ s/,,/,\. /;
   $title =~ s/,,/, /;
 
   # emebeded double quotes are not good
-  $title =~ s/\"/\'/g;
+  #$title =~ s/\"/\'/g;
 
   # "/" in title is really "no."
   $title =~ s/\// no. /g;
+
+  # remove brackets and content
   $title =~ s/\([^)]*\)//g;
   $title =~ s/  / /g;
   $title =~ s/ :/:/g;
-  
+
   $title = trim($title);
 
+  # make sure that first letter of title is capital, for example op. should be Op.
+  $title =~ s/^([a-z])/\U$1/;
 
  }
 

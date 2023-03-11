@@ -97,6 +97,7 @@ foreach my $item ( keys %{$result} ) {
 
 # create $releaseHash;
 &buildMetaDataHashes();
+
 #print Dumper($releaseHash);exit;
 
 #clone it
@@ -158,7 +159,7 @@ sub findDigits {
   my ($digits) = $lastDir =~ /(\d+)/;
   $digits =~ s/^0+//;
   return $digits;
-  exit;
+  next;
  }
  return "";
 }
@@ -353,11 +354,25 @@ sub trackArtists {
 sub indexArtists {
  my ( $itemRef, $position ) = @_;
 
+ #print "sub indexArtists\n";
+ #print Dumper($itemRef);
+ #print Dumper($position);
+ #exit;
+
  # drop the subroles between [ ]
  $itemRef->{role} =~ s/\[([^\[\]]|(?0))*]//g;
  my $role       = $itemRef->{role};
  my $artistName = $itemRef->{name};
 
+ # big assumption for Classical Boxes, see https://www.discogs.com/release/9352705-Vladimir-Horowitz-The-Unreleased-Live-Recordings-1966-1983-
+ #print Dumper ($role);
+ # here
+ if ( $role eq "" ) {
+  $role = "Composed by";
+ }
+
+ #print Dumper ($role);
+ #exit;
  # multiple roles might be separated by ,
  my @roles = split( ",", $role );
  for my $role (@roles) {
@@ -392,7 +407,8 @@ sub indexArtists {
 
  }
 
-}
+ #print Dumper($artistHashSort); exit;
+}    # ens sub
 
 # map discogs roles to mine, always work in progress
 sub mapRoles {
@@ -406,7 +422,8 @@ sub mapRoles {
   if ( lc($role) eq lc( $roles->[0] ) ) {
    $roles->[1] = trim( $roles->[1] );
    return $roles->[1];
-   exit;
+
+   #exit;
   }
  }
 
@@ -429,14 +446,18 @@ sub trackList {
 
  # to handle clasical compositions like Opera
  # the above does not work, fix it ?
- # Figarro->ActI->aria see 11463187
+ # Figarro->ActI->aria see	 11463187
  # properly structured releas will have heading->index->track
  #                                   do $comp  ->$part->$mov
  my $comp = "";
  my $part = "";
  my $mov  = "";
 
+ my $i = 0;
  foreach my $item (@$itemRef) {
+
+  #$i++; if ($i > 5) {exit(0);}
+  #print Dumper($item);
 
   # handle composition with part and movement
   # but drop "volume"
@@ -469,22 +490,31 @@ sub trackList {
    ( $work, $title ) = &setWorkTitle( $comp, $part, $mov );
 
    #print Dumper($item);
-   
+
    # in case this is vol-track
-   my $trackNo = &formatTrack($item->{"position"}); 
-  
-   $releaseHash->{"tracks"}->{ $trackNo }->{"title"}    = $title;
-   $releaseHash->{"tracks"}->{ $trackNo }->{"work"}     = $work;
-   $releaseHash->{"tracks"}->{ $trackNo }->{"duration"} = $item->{"duration"};
+   my $trackNo = &formatTrack( $item->{"position"} );
+
+   $releaseHash->{"tracks"}->{$trackNo}->{"title"}    = $title;
+   $releaseHash->{"tracks"}->{$trackNo}->{"work"}     = $work;
+   $releaseHash->{"tracks"}->{$trackNo}->{"duration"} = $item->{"duration"};
    foreach my $artist ( @{ $item->{extraartists} } ) {
     &indexArtists( $artist, $trackNo );
    }
+
+   # artists are also attached as arttists, for example composer, usually without a role
+   # here
+   for my $artists ( @{ $item->{"artists"} } ) {
+    &indexArtists( $artists, $trackNo );
+   }
+
   }
 
   # for index
+  # here
+  # name is often a composer without a role see https://www.discogs.com/release/9352705-Vladimir-Horowitz-The-Unreleased-Live-Recordings-1966-1983-
   if ( $item->{type_} eq "index" ) {
-   
-    #print Dumper($item);
+
+   #print Dumper($item->{"artists"});
 
    for my $subtrack ( @{ $item->{"sub_tracks"} } ) {
 
@@ -492,41 +522,47 @@ sub trackList {
 
     ( $work, $title ) = &setWorkTitle( $comp, $part, $mov );
 
-    my $trackNo = &formatTrack($subtrack->{"position"}); 
+    my $trackNo = &formatTrack( $subtrack->{"position"} );
 
-    $releaseHash->{"tracks"}->{ $trackNo }->{"title"}    = $title;
-    $releaseHash->{"tracks"}->{ $trackNo }->{"work"}     = $work;
-    $releaseHash->{"tracks"}->{ $trackNo }->{"duration"} = $subtrack->{"duration"};
+    $releaseHash->{"tracks"}->{$trackNo}->{"title"}    = $title;
+    $releaseHash->{"tracks"}->{$trackNo}->{"work"}     = $work;
+    $releaseHash->{"tracks"}->{$trackNo}->{"duration"} = $subtrack->{"duration"};
 
-    #print Dumper($releaseHash->{"tracks"}); 
+    #print Dumper($releaseHash->{"tracks"});
     # if this is index, artists can be attached to all sub_tracks from index
     # for now assume that they are on all tracks of an index, see Brahms Chamber 10107843
     for my $artists ( @{ $item->{extraartists} } ) {
      &indexArtists( $artists, $trackNo );
     }
-   }
-  }
+
+    # artists are also attached as arttists, for example composer, usually without a role
+    # here
+    for my $artists ( @{ $item->{"artists"} } ) {
+     &indexArtists( $artists, $trackNo );
+    }
+
+   }    # each subtrack
+  }    # index
 
  }
 }
 
 # sprintf track no
 sub formatTrack {
-	my ($track) = @_;
+ my ($track) = @_;
 
-   my $trackNo = "";
-   my @arr = split("-",$track);
-   if ($arr[0]) {
-   	$trackNo = sprintf( "%02d", $arr[0]);
-   }
-   if ($arr[1]) {
-   	$trackNo = $trackNo."-".sprintf( "%02d", $arr[1]);
-   }
-   
-   return $trackNo;
+ my $trackNo = "";
+ my @arr     = split( "-", $track );
+ if ( $arr[0] ) {
+  $trackNo = sprintf( "%02d", $arr[0] );
+ }
+ if ( $arr[1] ) {
+  $trackNo = $trackNo . "-" . sprintf( "%02d", $arr[1] );
+ }
+
+ return $trackNo;
 
 }
-
 
 # determine work and title from $comp, $part, $mov
 sub setWorkTitle {

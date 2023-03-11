@@ -19,6 +19,18 @@ sub getTrackPositionMbid {
  #print( "\n", $Mbid, ":", $position, ":", $workTitle, ":", $composerMbid, "\n" );
  print( "\nsearching MB for >", $workTitle, "< postion >", $position, "< within work >", $Mbid, "<\n" );
 
+ # what if I do not use position within work ?
+ # works for recitals when individual mpvements are played
+ # position is better when whole works are played
+ # do I need a count how many parts to a main work ?
+ # what if I do posiiton lookup only if > 1 ?
+
+ #( $id, $mbTitle ) = &getWorkAliasesMbid( $composerMbid, $workTitle );
+ #print( "return >", $id, "< work >", $mbTitle, "<\n" );
+
+ #exit;
+ #return ( $id, $mbTitle );
+
  #if ( $workTitle =~ m/Fantasias or Caprices, op. 16 2. Scherzo. Presto/ ) {
 
  my ( $id,     $orderingKey, $mbTitle ) = "";
@@ -81,7 +93,6 @@ sub getTrackPositionMbid {
 
  print( "return >", $id, "< work >", $mbTitle, "<\n" );
 
- #exit;
  return ( $id, $mbTitle );
 }
 
@@ -113,8 +124,9 @@ sub getWorkAliasesMbid {
  #save to file
  $counterAlias = $counterAlias + 1;
 
- &dumpToFile( "workAlias-" . $counterAlias . ".xml", $xml );    #exit(0);
- &dumpToFile( "workAlias-" . $counterAlias . ".cmd", $cmd );
+ &dumpToFile( "workAlias-" . sprintf( "%03d", $counterAlias ) . ".xml", $xml );    #exit(0);
+
+ &dumpToFile( "workAlias-" . sprintf( "%03d", $counterAlias ) . ".cmd", $cmd );
 
  my ( $score, $MbidWork, $mbIName, $mbTitle, $titleRet ) = "";
  my $lowScore = '999';
@@ -137,45 +149,52 @@ sub getWorkAliasesMbid {
      if ( $composerId eq $Mbid ) {
 
       $mbTitle = $work->findvalue("title");
-      my $distance = distance( $title, $mbTitle, { ignore_diacritics => 1 } );
 
-      if ($firstPrint) {
-       $firstPrint = "";
-       print expand ( "\n\t\ttitle ", sprintf( "%03d", $distance ), "\t", sprintf( "%03d", $lowScore ), "\t", $title, "<--->", $mbTitle, "\n" );
-      } else {
-       print expand ( "\t\ttitle ", sprintf( "%03d", $distance ), "\t", sprintf( "%03d", $lowScore ), "\t", $title, "<--->", $mbTitle, "\n" );
-      }
+      # let's try to  forget aboutt calculating distance and aliases
+      # just grab the first one
+      $MbidWork = $work->getAttribute("id");
+      $titleRet = $mbTitle;
+      return ( $MbidWork, $titleRet );
 
-      if ( $lowScore > $distance && $distance <= DISTANCE_TOLERANCE_WORK ) {
-       $lowScore = $distance;
-       $MbidWork = $work->getAttribute("id");
-       $titleRet = $mbTitle;
-       return ( $MbidWork, $titleRet );
+      #my $distance = distance( $title, $mbTitle, { ignore_diacritics => 1 } );
 
-      }
+      #if ($firstPrint) {
+      # $firstPrint = "";
+      # print expand ( "\n\t\ttitle ", sprintf( "%03d", $distance ), "\t", sprintf( "%03d", $lowScore ), "\t", $title, "<--->", $mbTitle, "\n" );
+      #} else {
+      # print expand ( "\t\ttitle ", sprintf( "%03d", $distance ), "\t", sprintf( "%03d", $lowScore ), "\t", $title, "<--->", $mbTitle, "\n" );
+      #}
+
+      #if ( $lowScore > $distance && $distance <= DISTANCE_TOLERANCE_WORK ) {
+      # $lowScore = $distance;
+      # $MbidWork = $work->getAttribute("id");
+      # $titleRet = $mbTitle;
+      # return ( $MbidWork, $titleRet );
+
+      #}
 
       # if not found, check aliases
-      if ($MbidWork) { next; }
+      #if ($MbidWork) { next; }
 
-      foreach my $alias ( $work->findnodes("alias-list") ) {
+      #foreach my $alias ( $work->findnodes("alias-list") ) {
 
-       my $names = join "%", map { $_->to_literal(); } $alias->findnodes('./alias');
-       my @arr   = split( "%", $names );
-       foreach my $alias (@arr) {
-        $distance = distance( $title, $alias, { ignore_diacritics => 1 } );
+      #my $names = join "%", map { $_->to_literal(); } $alias->findnodes('./alias');
+      #my @arr   = split( "%", $names );
+      #foreach my $alias (@arr) {
+      #$distance = distance( $title, $alias, { ignore_diacritics => 1 } );
 
-        print expand( "\t\talias ", sprintf( "%03d", $distance ), "\t", sprintf( "%03d", $lowScore ), "\t", $title, "<--->", $alias, "\n" );
+      #print expand( "\t\talias ", sprintf( "%03d", $distance ), "\t", sprintf( "%03d", $lowScore ), "\t", $title, "<--->", $alias, "\n" );
 
-        if ( $lowScore > $distance && $distance <= DISTANCE_TOLERANCE_WORK ) {
-         $lowScore = $distance;
-         $MbidWork = $work->getAttribute("id");
-         $titleRet = $alias;
-         return ( $MbidWork, $titleRet );
+      #if ( $lowScore > $distance && $distance <= DISTANCE_TOLERANCE_WORK ) {
+      #$lowScore = $distance;
+      #$MbidWork = $work->getAttribute("id");
+      #$titleRet = $alias;
+      #return ( $MbidWork, $titleRet );
 
-        }    # tolerance
+      #}    # tolerance
 
-       }    # alias array
-      }    # alias
+      #}    # alias array
+      #}    # alias
 
      }    # composer
     }    # artist
@@ -233,24 +252,31 @@ sub getWorkMbid {
      #print Dumper($mbId,$composerId);
      if ( $composerId eq $mbId ) {
 
-      # disambiguation have special editions and arrangements etc.
+      # disambiguation have special editions and arrangements etc., skip it
       if ( !$work->findvalue("disambiguation") ) {
 
        my $mbTitle = $work->findvalue("title");
 
-       my $distance = distance( $title, $mbTitle, { ignore_diacritics => 1 } );
+       $mbIdWork = $work->getAttribute("id");
+       print( " : ", $mbIdWork, "\n" );
+       return ($mbIdWork);
+
+       # forget about calculating distance
+       # let's grab first returned
+
+       #my $distance = distance( $title, $mbTitle, { ignore_diacritics => 1 } );
 
        #print( " ", $distance, " ", $lowScore, " between ", $title, " <---> ", $mbTitle, "\n" );
-       if ( $lowScore > $distance ) {
-        $lowScore = $distance;
-        $mbIdWork = $work->getAttribute("id");
+       #if ( $lowScore > $distance ) {
+       # $lowScore = $distance;
+       # $mbIdWork = $work->getAttribute("id");
 
-        if ( $lowScore <= DISTANCE_TOLERANCE_WORK ) {
-         print( " : ", $mbIdWork, "\n" );
-         return ($mbIdWork);
-        }
+       # if ( $lowScore <= DISTANCE_TOLERANCE_WORK ) {
+       #  print( " : ", $mbIdWork, "\n" );
+       #  return ($mbIdWork);
+       # }
 
-       }
+       #}
       }    # disambiguation
      }
     }
@@ -262,6 +288,8 @@ sub getWorkMbid {
  #} #debug
 
  print( " : ", $mbIdWork, "\n" );
+
+ #exit;
  return $mbIdWork;
 }
 

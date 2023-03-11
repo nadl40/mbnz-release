@@ -312,7 +312,7 @@ sub albumTracks {
   # title
   # title contains most likely work
   if ( trim( $discogs->{$track}->{"work"} ) ne trim( $discogs->{$track}->{"title"} ) ) {
-   my $len      = length( $discogs->{$track}->{"work"} );
+   my $len = length( $discogs->{$track}->{"work"} );
 
    # extract work:title from title
    my $titleNew = &clean( substr( $discogs->{$track}->{"title"}, 0, $len ) . ":" . substr( $discogs->{$track}->{"title"}, $len + 1 ) );
@@ -552,7 +552,7 @@ sub setReleaseCredits {
    #remove sort sequence
    #my @arr = split(":",$artist);
    #my $artistHash = pop @arr;
-    
+
    # don't use discogs credited, lot's of cyrylics
    $hash->{"role"}       = "composer";
    $hash->{"credited"}   = $releaseArtists->{"composer"}->{$artist}->{"name"};
@@ -688,6 +688,7 @@ sub setWorks {
  foreach my $work ( keys %{$mainWorks} ) {
 
   $mainWorks->{$work}->{"workId"} = &getWorkMbid( $mainWorks->{$work}->{"composerId"}, $work );
+
  }    # work
 
  my $prevWork = "";
@@ -724,6 +725,7 @@ sub setWorks {
    ( $trackMBid, $mbTitle ) = &getTrackPositionMbid( $workMBid, $position, $title, $composerMBid );
   }
   $data->{"works"}->{ sprintf( "%03d", $counter ) } = $trackMBid;
+
  }
 
  #print Dumper($data);exit(0);
@@ -748,8 +750,7 @@ sub setArtists {
  #my ( $seqComposer, $seqEnsemble,  $seqConductor, $seqSoloist )    = (0,0,0,0);
  #my ( $prevSoloist, $prevComposer, $prevEnsemble, $prevConductor ) = ("","","","");
  my $seqHash = {};
- my ($seqArtist,$seq)  = (0,0);
- 
+ my ( $seqArtist, $seq ) = ( 0, 0 );
 
  foreach my $track ( sort { $a cmp $b } keys %{$tracks} ) {
 
@@ -769,11 +770,11 @@ sub setArtists {
    $foundIt = "";
 
    # keep artist sequence as per tracks
-   if (!$seqHash->{$artist}) {
-  	 $seq++;
-  	 $seqHash->{$artist}=$seq;
-    } 
-  	$seqArtist = $seqHash->{$artist};
+   if ( !$seqHash->{$artist} ) {
+    $seq++;
+    $seqHash->{$artist} = $seq;
+   }
+   $seqArtist = $seqHash->{$artist};
 
    # look for composer
    if ( $artist =~ m/(\(composer\))/i ) {
@@ -787,13 +788,13 @@ sub setArtists {
    # look for ensemble
    if ( $artist =~ m/(\(orch\))/i ) {
     $foundIt = "y";
-    $data = &populateHash( $seqArtist, $numberOfTracks, "ensemble", $artist, $track, $data );
+    $data    = &populateHash( $seqArtist, $numberOfTracks, "ensemble", $artist, $track, $data );
    }
 
    # look for conductor
    if ( $artist =~ m/(\(con\))/i ) {
     $foundIt = "y";
-    $data = &populateHash( $seqArtist, $numberOfTracks, "conductor", $artist, $track, $data );
+    $data    = &populateHash( $seqArtist, $numberOfTracks, "conductor", $artist, $track, $data );
    }
 
    # default soloist
@@ -835,32 +836,29 @@ sub setArtists {
 
 }
 
-
 # keep artist sequence, later on used in artist sort
 sub getSeq {
-	my ($artist,$seq,$seqHash) = @_;
+ my ( $artist, $seq, $seqHash ) = @_;
 
-  print "\n";
-  print ($artist,"\n");
-  print Dumper($seqHash);
+ print "\n";
+ print( $artist, "\n" );
+ print Dumper($seqHash);
 
-  if (!$seqHash->{$artist}) {
-  	$seq++;
-  	$seqHash->{$artist}=$seq;
-  } else {
-  	$seq = $seqHash->{$artist};
-  }
+ if ( !$seqHash->{$artist} ) {
+  $seq++;
+  $seqHash->{$artist} = $seq;
+ } else {
+  $seq = $seqHash->{$artist};
+ }
 
-  print Dumper($seqHash);
-  return ($seq,$seqHash);
-}	
-
+ print Dumper($seqHash);
+ return ( $seq, $seqHash );
+}
 
 # populate hash with artists
 # one artist can play more than one instrument
 sub populateHash {
  my ( $seq, $absTrackNo, $type, $artist, $track, $data ) = @_;
-
 
  my ( $mbid, $artistName, $instrumentName ) = "";
  my $artistWork = trim( substr( $artist, 0, index( $artist, "\(" ) ) );
@@ -870,8 +868,8 @@ sub populateHash {
 
  # add sequence to $artistWork, later use in sort
  my $artistWorkNoSort = $artistWork;
- $artistWork = sprintf( "%03d", $seq ).":".$artistWork;
- 
+ $artistWork = sprintf( "%03d", $seq ) . ":" . $artistWork;
+
  # don't use mb name
  $data->{$type}->{$artistWork}->{"name"} = $artistWorkNoSort;
  $data->{$type}->{$artistWork}->{"id"}   = $mbid;

@@ -4,8 +4,8 @@
 # This is an attempt to add relationships to an exisitng relese in MB
 #  --- second cut, using batch updates
 #
-#  --- updated for new MB Relationship Editor 
-#      had to slow it down as MB is more sluggish 
+#  --- updated for new MB Relationship Editor
+#      had to slow it down as MB is more sluggish
 #
 #*******************************************************************************
 use Selenium::Remote::Driver;
@@ -78,7 +78,6 @@ my $obj     = Hash::Persistent->new($dataFileName);
 my $hashRel = $obj->{string};                         # make sure this is a proper hash reference, watch out for "\"
 undef $obj;
 
-
 # start the driver and login
 # ./operadriver --url-base=/wd/hub
 my $driver = Selenium::Remote::Driver->new(
@@ -112,6 +111,15 @@ sleep( WAIT_FOR_MB * 7 );
 my ( $element, $recording, $recordingSelector ) = "";
 my @trackSelector = ();
 
+#if more than 100 tracks, need to click expand to all tracks
+# what about multovolume release from Discogs ?
+# I think I need to click on volume arrows and expand each volume if over 6 or so
+my $numberOfTracks = keys %{ $hashRel->{"works"} };
+if ( $numberOfTracks > 100 ) {
+ wait_until { $driver->find_element_by_class_name('load-tracks') }->click();
+}
+sleep( WAIT_FOR_MB * 2 );
+
 # Note
 my $crlf     = chr(10) . chr(13);
 my $noteText = $hashRel->{"url"} . $crlf . "addRelationships.pl Classical Music Uploader" . $crlf . "https://github.com/nadl40/mbnz-release";
@@ -126,6 +134,9 @@ foreach my $track (@tracks) {
  push @trackSelector, $recordingSelector;
 }
 
+my $size = @trackSelector;
+print "number of tracks selected: ", $size, "\n";
+
 # checkbox to select all recordings, for clean up
 $element = wait_until { $driver->find_element_by_class_name('recordings') };
 my $recordingsSelected = wait_until { $driver->find_child_element( $element, './input' ) };
@@ -136,15 +147,18 @@ my $batchAdd = wait_until { $driver->find_element( ".add-item.with-label.batch-a
 
 # work selector
 my @workSelector = ();
-my @works        = $driver->find_elements( "works", "class_name" );
 
-# drop first element as it usess the same class name as checkboxes to recordings
+# there is no need for wait_until, built in ?
+my @works = $driver->find_elements( "works", "class_name" );
+
+# drop first element as it uses the same class name as checkboxes to recordings
 shift @works;
-
 foreach my $work (@works) {
- my $workAdd = $driver->find_child_element( $work, './button', 'xpath' );
+ my $workAdd = wait_until { $driver->find_child_element( $work, './button', 'xpath' ) };
  push @workSelector, $workAdd;
 }
+$size = @workSelector;
+print "number of works selected: ", $size, "\n";
 
 # loop relationship hash
 foreach my $type ( keys %{$hashRel} ) {
@@ -215,7 +229,6 @@ sub addCredits {
  my @tracks = ();
 
  foreach my $artistId ( keys %{$artists} ) {
-
 
   # artists can have multiple insruments
   print( "\n", $type, "->", $artists->{$artistId}->{"name"}, "\n" );
@@ -437,8 +450,7 @@ sub addArtistRel {
   # try to handle vocals
   my $creditType = "";
 
-
-  # still use keystrokes as a voice flag, come up with something simpler 
+  # still use keystrokes as a voice flag, come up with something simpler
   if ( $artist->{"instrument"}->{$instrument}->{"keystrokes"} ) {
    $creditType = "vocal";
    wait_until { $driver->find_element( '.relationship-type.focus-first.required', 'css' ) }->send_keys("vocals");
@@ -497,7 +509,7 @@ sub addArtistRel {
     # take first input
     $inputs[0]->send_keys( lc( $artist->{"instrument"}->{$instrument}->{"name"} ) . " vocals" );
     $driver->send_keys_to_active_element( KEYS->{'enter'} );
-   }    
+   }
 
   }    # end of vocal
 
@@ -512,7 +524,6 @@ sub prepSelection {
  my ( $volumes, $batchAddButton, $recordingsSelectedCheckBox, $trackSelectorRef, @tracks ) = @_;
 
  my @trackSelector = @{$trackSelectorRef};
-
 
  # reset track selection
  $recordingsSelectedCheckBox->click();

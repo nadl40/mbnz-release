@@ -638,8 +638,8 @@ sub loadInstruments {
     }
 
     # get MB instrument id, 100% match
-    my $mbName = ""; 
-    ($mbid,$mbName) = &getInstrumentMbid($mbInstrumentLookup);
+    my $mbName = "";
+    ( $mbid, $mbName ) = &getInstrumentMbid($mbInstrumentLookup);
 
     if ($mbid) {
      $hash->{$instrument}->{"id"}   = $mbid;
