@@ -138,7 +138,7 @@ This is especially usefull for adding new work rels, any existing work rels will
 
 ### recordings clone
 
-I've removed this script as it causes orpaned recordings in MB. Use merge instead.
+I've removed this script as it causes orphaned recordings in MB. Use recordings merge instead.
 see https://musicbrainz.org/doc/Merge_Rather_Than_Delete
 
 ## Limitations
