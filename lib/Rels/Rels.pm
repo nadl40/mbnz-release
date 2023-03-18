@@ -25,11 +25,14 @@ sub getTrackPositionMbid {
  # do I need a count how many parts to a main work ?
  # what if I do posiiton lookup only if > 1 ?
 
- #( $id, $mbTitle ) = &getWorkAliasesMbid( $composerMbid, $workTitle );
- #print( "return >", $id, "< work >", $mbTitle, "<\n" );
-
- #exit;
- #return ( $id, $mbTitle );
+ # do not do position if this is first one, it might be single movement performance
+ # direct search is more sucessfull
+ # sometimes is and sometimes is not...
+ #if ( $position == 1 ) {
+ # ( $id, $mbTitle ) = &getWorkAliasesMbid( $composerMbid, $workTitle );
+ # print( "return >", $id, "< work >", $mbTitle, "<\n" );
+ # return ( $id, $mbTitle );
+ #}
 
  #if ( $workTitle =~ m/Fantasias or Caprices, op. 16 2. Scherzo. Presto/ ) {
 

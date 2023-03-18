@@ -322,7 +322,13 @@ sub trackArtists {
     #$role = "(" . $role . ")";
     $role = "(" . $role . ")";
 
-    my $artistName = $item->{name};
+    # try anv if it exists
+    my $artistName = "";
+    if ($item->{"anv"}) {
+     $artistName =$item->{"anv"};	
+    } else {
+    	$artistName = $item->{"name"};
+    }
 
     # drop text between round braces ()
     $artistName =~ s/\s*\([^)]*\)//g;
@@ -362,7 +368,14 @@ sub indexArtists {
  # drop the subroles between [ ]
  $itemRef->{role} =~ s/\[([^\[\]]|(?0))*]//g;
  my $role       = $itemRef->{role};
- my $artistName = $itemRef->{name};
+ my $artistName = "";
+ 
+ if ($itemRef->{"anv"}) {
+ 	$artistName = $itemRef->{"anv"};
+ } else {
+  $artistName = $itemRef->{"name"};
+	
+ }
 
  # big assumption for Classical Boxes, see https://www.discogs.com/release/9352705-Vladimir-Horowitz-The-Unreleased-Live-Recordings-1966-1983-
  #print Dumper ($role);
@@ -485,11 +498,17 @@ sub trackList {
   }
 
   # set work and title for non index
+  # skip DVD
   if ( $item->{type_} eq "track" ) {
 
+   if ($item->{"position"} =~ m/DVD/i) {
+      print ("skipping DVD ",$item->{"position"},"\n");
+      next;
+   	}
+   	
    ( $work, $title ) = &setWorkTitle( $comp, $part, $mov );
 
-   #print Dumper($item);
+   #print Dumper($item); 
 
    # in case this is vol-track
    my $trackNo = &formatTrack( $item->{"position"} );
@@ -517,6 +536,11 @@ sub trackList {
    #print Dumper($item->{"artists"});
 
    for my $subtrack ( @{ $item->{"sub_tracks"} } ) {
+
+    if ( $subtrack->{"position"} =~ m/DVD/i) {
+    	print ("skipping DVD ",$subtrack->{"position"},"\n");
+    	next;
+    	}
 
     $mov = $subtrack->{"title"};
 
@@ -550,7 +574,7 @@ sub trackList {
 # sprintf track no
 sub formatTrack {
  my ($track) = @_;
-
+ 
  my $trackNo = "";
  my @arr     = split( "-", $track );
  if ( $arr[0] ) {

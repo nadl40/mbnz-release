@@ -1,3 +1,6 @@
+
+use Data::Dumper::Simple;
+
 # export module
 use Exporter qw(import);
 our @EXPORT_OK = qw(clean delExtension dumpToFile delExtension readConfig);
@@ -19,6 +22,9 @@ sub clean {
  my ($title) = @_;
 
  if ($title) {
+
+  # remove brackets and content
+  $title =~ s/\([^)]*\)//g;
 
   $title =~ s/ In / in /;
   $title =~ s/Minor/minor/;
@@ -44,7 +50,9 @@ sub clean {
   $title =~ s/ S /, S\. /;
 
   #$title =~ s/,,/,\. /;
-  $title =~ s/,,/, /;
+  $title =~ s/,,/, /g;
+  $title =~ s/ , /, /g;
+
 
   # emebeded double quotes are not good
   #$title =~ s/\"/\'/g;
@@ -52,8 +60,6 @@ sub clean {
   # "/" in title is really "no."
   $title =~ s/\// no. /g;
 
-  # remove brackets and content
-  $title =~ s/\([^)]*\)//g;
   $title =~ s/  / /g;
   $title =~ s/ :/:/g;
 

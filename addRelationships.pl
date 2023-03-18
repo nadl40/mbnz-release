@@ -62,6 +62,13 @@ if ( !$releaseId ) {
  exit;
 }
 
+# get release id only
+my @releaseWork = split("\/",$releaseId);
+my $releaseIdWork = pop(@releaseWork);
+if ($releaseIdWork) {
+	$releaseId= $releaseIdWork;
+}
+
 if ( !$dataFileName ) {
  print( "please provide relationship hash data  --data", "\n" );
  exit;
@@ -111,14 +118,28 @@ sleep( WAIT_FOR_MB * 7 );
 my ( $element, $recording, $recordingSelector ) = "";
 my @trackSelector = ();
 
-#if more than 100 tracks, need to click expand to all tracks
-# what about multovolume release from Discogs ?
-# I think I need to click on volume arrows and expand each volume if over 6 or so
+#if more than 100 tracks on single volume, need to click expand to all tracks
 my $numberOfTracks = keys %{ $hashRel->{"works"} };
 if ( $numberOfTracks > 100 ) {
- wait_until { $driver->find_element_by_class_name('load-tracks') }->click();
+ my $element = $driver->find_element_by_class_name('load-tracks');
+ if ($element) {
+ 	$element->click();
+  sleep( WAIT_FOR_MB * 2 );
+ }
 }
-sleep( WAIT_FOR_MB * 2 );
+
+# need to expand volume arrows for CD's,  if present
+my @volumesArrow = $driver->find_elements( "expand-triangle", "class_name" );
+my $arrowCount=0;
+foreach my $volumeArrow (@volumesArrow) {
+ # first 10 open by default
+ $arrowCount++;
+ if ( $arrowCount > 10 ) {
+ 	$volumeArrow->click();
+ 	sleep( WAIT_FOR_MB );
+ }
+}
+
 
 # Note
 my $crlf     = chr(10) . chr(13);
@@ -471,20 +492,22 @@ sub addArtistRel {
    $driver->send_keys_to_active_element( KEYS->{'enter'} );
   }
 
+  
   # credited as
   sleep(WAIT_FOR_MB);
   if ( $artist->{"name"} ) {
 
-   my $element = $driver->find_element( 'target-entity-credit', 'class_name' );
-   my $credit  = $driver->find_child_element( $element, 'entity-credit', 'class_name' );
+   my $element = wait_until {$driver->find_element( 'target-entity-credit', 'class_name' )};
+   my $credit  = wait_until {$driver->find_child_element( $element, 'entity-credit', 'class_name' )};
    $credit->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
   }
 
+  #print Dumper($creditType); 
   #instrument
   if ( $creditType eq "instrument" ) {
 
-   my $element = $driver->find_element( '.attribute-container.multiselect.instrument', 'css' );
+   my $element = wait_until {$driver->find_element( '.attribute-container.multiselect.instrument', 'css' )};
    my @inputs  = $driver->find_child_elements( $element, 'input', 'css' );
 
    # take first input
@@ -503,11 +526,16 @@ sub addArtistRel {
 
    if ( $artist->{"instrument"}->{$instrument}->{"keystrokes"} ) {
 
-    my $element = $driver->find_element( '.attribute-container.multiselect.vocal', 'css' );
+    my $element = wait_until {$driver->find_element( '.attribute-container.multiselect.vocal', 'css' )};
     my @inputs  = $driver->find_child_elements( $element, 'input', 'css' );
 
     # take first input
-    $inputs[0]->send_keys( lc( $artist->{"instrument"}->{$instrument}->{"name"} ) . " vocals" );
+    if ($artist->{"instrument"}->{$instrument}->{"name"}  =~ m/vocals/i) {
+     $inputs[0]->send_keys( lc( $artist->{"instrument"}->{$instrument}->{"name"} ));
+    } else {
+     $inputs[0]->send_keys( lc( $artist->{"instrument"}->{$instrument}->{"name"} ) . " vocals" );
+    }
+    sleep(WAIT_FOR_MB);
     $driver->send_keys_to_active_element( KEYS->{'enter'} );
    }
 
