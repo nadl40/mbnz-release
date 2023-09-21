@@ -335,13 +335,14 @@ sub getInstrumentMbid {
 
   my $instrumentNameMB = $instrument->findvalue("name");
 
-  $distance = distance( $name, $instrumentNameMB, { ignore_diacritics => 1 } );
+  # don't do distance, first returned is usually correct
+  #$distance = distance( $name, $instrumentNameMB, { ignore_diacritics => 1 } );
 
-  $i++;
+  #$i++;
 
   #if ( $i > 1 ) { print "\n" } ;   print( $distance, " between ", $name, '<-->', $instrumentNameMB, "\n" );
 
-  if ( $distance == 0 ) {
+  #if ( $distance == 0 ) {
    $instrumentId   = $instrument->getAttribute("id");
    $instrumentName = $instrumentNameMB;
 
@@ -349,12 +350,14 @@ sub getInstrumentMbid {
    $lookup->{$name}->{"instrumentName"} = $instrumentName;
 
    return ( $instrumentId, $instrumentName );
-  }
+   next;
+  #}
 
   #do not check aliases
 
  }
 
+ 
  return ( $instrumentId, $instrumentName );
 
 }

@@ -56,7 +56,12 @@ sub clean {
 
   # emebeded double quotes are not good
   #$title =~ s/\"/\'/g;
-
+  
+  #replace typographical quote with ASCII quote
+  # here
+  #$title =~ s/\x{2019}/\'/g;
+  
+  
   # "/" in title is really "no."
   $title =~ s/\// no. /g;
 

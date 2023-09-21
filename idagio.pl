@@ -1238,11 +1238,16 @@ sub albumTitle {
   $albumTitle = trim( $arr[1] );
  }
 
- $albumTitle =~ s/,/ /g;
- $albumTitle =~ s/&/\//g;
- $albumTitle =~ s/Op\./op\./g;
- $albumTitle =~ s/Opp\./op\./g;
- $albumTitle =~ s/  / /g;
+ # not using track clean
+ # why not ?
+ #$albumTitle =~ s/,/ /g;
+ #$albumTitle =~ s/&/\//g;
+ #$albumTitle =~ s/Op\./op\./g;
+ #$albumTitle =~ s/Opp\./op\./g;
+ #$albumTitle =~ s/  / /g;
+ #$albumTitle =~ s/No\./no\./g;
+ 
+ $albumTitle = &clean($albumTitle);
 
  # album title
  #<input type="hidden" name="name" value="Dvor�k / Tchaikovsky / Borodin: String Quartets">

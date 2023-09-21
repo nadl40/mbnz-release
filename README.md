@@ -86,7 +86,7 @@ Uses discogs url of a release (not master) of an album to create and submit html
 It also creates a `relationshipsSerial.txt` file that can be used to add release relationships using a webdriver.
 
 ```bash
-./discogs.pl --url DiscogsAlbumUrl
+./discogs.pl --release DiscogsAlbumUrl
 ```
 
 There will be a number of displays to stdout and at the end, your default browser should open Musicbrainz release add form. You might have to provide userid/pass as I did not automate.
