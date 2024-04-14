@@ -232,7 +232,8 @@ sub addWorks {
    #$driver->find_element('.relationship-type.required','css')->send_keys("recording of");
 
    # work mb id
-   wait_until { $driver->find_element( '.relationship-target.focus-first.required', 'css' ) }->send_keys( $works->{$track} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $works->{$track} );
+      
    sleep(WAIT_FOR_MB);
 
    &clickSave( $driver, WAIT_FOR_MB_SAVE * 2 );
