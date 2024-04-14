@@ -63,10 +63,10 @@ if ( !$releaseId ) {
 }
 
 # get release id only
-my @releaseWork = split("\/",$releaseId);
+my @releaseWork   = split( "\/", $releaseId );
 my $releaseIdWork = pop(@releaseWork);
 if ($releaseIdWork) {
-	$releaseId= $releaseIdWork;
+ $releaseId = $releaseIdWork;
 }
 
 if ( !$dataFileName ) {
@@ -123,23 +123,23 @@ my $numberOfTracks = keys %{ $hashRel->{"works"} };
 if ( $numberOfTracks > 100 ) {
  my $element = $driver->find_element_by_class_name('load-tracks');
  if ($element) {
- 	$element->click();
+  $element->click();
   sleep( WAIT_FOR_MB * 2 );
  }
 }
 
 # need to expand volume arrows for CD's,  if present
 my @volumesArrow = $driver->find_elements( "expand-triangle", "class_name" );
-my $arrowCount=0;
+my $arrowCount   = 0;
 foreach my $volumeArrow (@volumesArrow) {
+
  # first 10 open by default
  $arrowCount++;
  if ( $arrowCount > 10 ) {
- 	$volumeArrow->click();
- 	sleep( WAIT_FOR_MB );
+  $volumeArrow->click();
+  sleep(WAIT_FOR_MB);
  }
 }
-
 
 # Note
 my $crlf     = chr(10) . chr(13);
@@ -150,7 +150,7 @@ my $note = wait_until { $driver->find_child_element( $element, './div/textarea' 
 # checkboxes to select a track
 my @tracks = $driver->find_elements( "track", "class_name" );
 foreach my $track (@tracks) {
- $recording = wait_until { $driver->find_child_element( $track, 'recording', "class_name" ) };
+ $recording         = wait_until { $driver->find_child_element( $track,     'recording', "class_name" ) };
  $recordingSelector = wait_until { $driver->find_child_element( $recording, './input' ) };
  push @trackSelector, $recordingSelector;
 }
@@ -300,26 +300,25 @@ sub addVenueRel {
 
   wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Place");
   sleep(WAIT_FOR_MB);
-  wait_until { $driver->find_element( '.relationship-type.focus-first.required', 'css' ) }->send_keys("recorded-at");
+  wait_until { $driver->find_element( '//input[@placeholder="Type or click to search"]', 'xpath' ) }->send_keys("recorded-at");
   $driver->send_keys_to_active_element( KEYS->{'enter'} );
   sleep(WAIT_FOR_MB);
 
-  #relationship-target focus-first first required
   if ( $artist->{"id"} ) {
-   wait_until { $driver->find_element( '.relationship-target.focus-first.required', 'css' ) }->send_keys( $artist->{"id"} );
+   print Dumper( $artist->{"id"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $artist->{"id"} );
    sleep(WAIT_FOR_MB);
   } else {
-   wait_until { $driver->find_element( '.relationship-target.focus-first.required', 'css' ) }->send_keys( $artist->{"name"} );
+   print Dumper( $artist->{"name"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
    $driver->send_keys_to_active_element( KEYS->{'enter'} );
   }
 
   # credited as
-  sleep( WAIT_FOR_MB * 2 );
+  sleep(WAIT_FOR_MB);
   if ( $artist->{"name"} ) {
-   my $element = $driver->find_element( 'target-entity-credit', 'class_name' );
-   my $credit  = $driver->find_child_element( $element, 'entity-credit', 'class_name' );
-   $credit->send_keys( $artist->{"name"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Credited as"]', 'xpath' ) }->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
   }
 
@@ -377,15 +376,17 @@ sub addEnsembleRel {
   wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Artist");
   sleep(WAIT_FOR_MB);
 
-  wait_until { $driver->find_element( '.relationship-type.focus-first.required', 'css' ) }->send_keys( "orchestra" . " " );
+  wait_until { $driver->find_element( '//input[@placeholder="Type or click to search"]', 'xpath' ) }->send_keys( "orchestra" . " " );
   sleep(WAIT_FOR_MB);
   $driver->send_keys_to_active_element( KEYS->{'enter'} );
 
   if ( $artist->{"id"} ) {
-   wait_until { $driver->find_element( '.relationship-target.focus-first.required', 'css' ) }->send_keys( $artist->{"id"} );
+   print Dumper( $artist->{"id"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $artist->{"id"} );
    sleep(WAIT_FOR_MB);
   } else {
-   wait_until { $driver->find_element( '.relationship-target.focus-first.required', 'css' ) }->send_keys( $artist->{"name"} );
+   print Dumper( $artist->{"name"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
    $driver->send_keys_to_active_element( KEYS->{'enter'} );
   }
@@ -393,9 +394,7 @@ sub addEnsembleRel {
   # credited as
   sleep(WAIT_FOR_MB);
   if ( $artist->{"name"} ) {
-   my $element = $driver->find_element( 'target-entity-credit', 'class_name' );
-   my $credit  = $driver->find_child_element( $element, 'entity-credit', 'class_name' );
-   $credit->send_keys( $artist->{"name"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Credited as"]', 'xpath' ) }->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
   }
 
@@ -422,15 +421,17 @@ sub addConductorRel {
   wait_until { $driver->find_element_by_class('entity-type') }->send_keys("Artist");
   sleep(WAIT_FOR_MB);
 
-  wait_until { $driver->find_element( '.relationship-type.focus-first.required', 'css' ) }->send_keys("conductor");
+  wait_until { $driver->find_element( '//input[@placeholder="Type or click to search"]', 'xpath' ) }->send_keys("conductor");
   sleep(WAIT_FOR_MB);
   $driver->send_keys_to_active_element( KEYS->{'enter'} );
 
   if ( $artist->{"id"} ) {
-   wait_until { $driver->find_element( '.relationship-target.focus-first.required', 'css' ) }->send_keys( $artist->{"id"} );
+   print Dumper( $artist->{"id"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $artist->{"id"} );
    sleep(WAIT_FOR_MB);
   } else {
-   wait_until { $driver->find_element( '.relationship-target.focus-first.required', 'css' ) }->send_keys( $artist->{"name"} );
+   print Dumper( $artist->{"name"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
    $driver->send_keys_to_active_element( KEYS->{'enter'} );
   }
@@ -438,9 +439,7 @@ sub addConductorRel {
   # credited as
   sleep(WAIT_FOR_MB);
   if ( $artist->{"name"} ) {
-   my $element = $driver->find_element( 'target-entity-credit', 'class_name' );
-   my $credit  = $driver->find_child_element( $element, 'entity-credit', 'class_name' );
-   $credit->send_keys( $artist->{"name"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Credited as"]', 'xpath' ) }->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
   }
 
@@ -466,80 +465,78 @@ sub addArtistRel {
 
   my $selected = "";
 
-  wait_until { $driver->find_element( '.entity-type.focus-first', 'css' ) }->send_keys("Artist");
+  wait_until { $driver->find_element( 'entity-type', 'class' ) }->send_keys("Artist");
 
-  # try to handle vocals
   my $creditType = "";
-
-  # still use keystrokes as a voice flag, come up with something simpler
   if ( $artist->{"instrument"}->{$instrument}->{"keystrokes"} ) {
-   $creditType = "vocal";
-   wait_until { $driver->find_element( '.relationship-type.focus-first.required', 'css' ) }->send_keys("vocals");
-   $driver->send_keys_to_active_element( KEYS->{'enter'} );
+   $creditType = "vocals";
   } else {
-   $creditType = "instrument";
-   wait_until { $driver->find_element( '.relationship-type.focus-first.required', 'css' ) }->send_keys("instruments");
-   $driver->send_keys_to_active_element( KEYS->{'enter'} );
+   $creditType = "instruments";
   }
+  wait_until { $driver->find_element( '//input[@placeholder="Type or click to search"]', 'xpath' ) }->send_keys($creditType);
+  $driver->send_keys_to_active_element( KEYS->{'enter'} );
 
-  #relationship-target focus-first first required
+  # need  enter only for name
+  my $keyValue = "";
   if ( $artist->{"id"} ) {
-   wait_until { $driver->find_element( '.relationship-target.focus-first.required', 'css' ) }->send_keys( $artist->{"id"} );
+   print Dumper( $artist->{"id"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $artist->{"id"} );
    sleep(WAIT_FOR_MB);
   } else {
-   wait_until { $driver->find_element( '.relationship-target.focus-first.required', 'css' ) }->send_keys( $artist->{"name"} );
+   print Dumper( $artist->{"name"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
    $driver->send_keys_to_active_element( KEYS->{'enter'} );
   }
 
-  
   # credited as
   sleep(WAIT_FOR_MB);
   if ( $artist->{"name"} ) {
-
-   my $element = wait_until {$driver->find_element( 'target-entity-credit', 'class_name' )};
-   my $credit  = wait_until {$driver->find_child_element( $element, 'entity-credit', 'class_name' )};
-   $credit->send_keys( $artist->{"name"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Credited as"]', 'xpath' ) }->send_keys( $artist->{"name"} );
    sleep(WAIT_FOR_MB);
   }
 
-  #print Dumper($creditType); 
-  #instrument
-  if ( $creditType eq "instrument" ) {
-
-   my $element = wait_until {$driver->find_element( '.attribute-container.multiselect.instrument', 'css' )};
-   my @inputs  = $driver->find_child_elements( $element, 'input', 'css' );
-
-   # take first input
+  #print Dumper($creditType);
+  #instruments
+  if ( $creditType eq "instruments" ) {
    if ( $artist->{"instrument"}->{$instrument}->{"id"} ) {
-    $inputs[0]->send_keys( $artist->{"instrument"}->{$instrument}->{"id"} );
-    sleep(WAIT_FOR_MB);
+    wait_until { $driver->find_element( '//input[@placeholder="instrument"]', 'xpath' ) }->send_keys( $artist->{"instrument"}->{$instrument}->{"id"} );
    } else {
-    $inputs[0]->send_keys( $artist->{"instrument"}->{$instrument}->{"name"} );
-    sleep(WAIT_FOR_MB);
+    $keyValue = $artist->{"instrument"}->{$instrument}->{"name"};
+    wait_until { $driver->find_element( '//input[@placeholder="instrument"]', 'xpath' ) }->send_keys( $artist->{"instrument"}->{$instrument}->{"name"} );
     $driver->send_keys_to_active_element( KEYS->{'enter'} );
    }
   }
 
-  # vocal
-  if ( $creditType eq "vocal" ) {
+  # incase I need inputs
+  #wait_until {$driver->find_element( '//input[@placeholder="instrument"]', 'xpath' )}->send_keys( $keyValue );
+  #$driver->send_keys_to_active_element( KEYS->{'enter'} );
+  #my @inputs  = $driver->find_child_elements( $element, 'input', 'css' );
 
+  # take first input
+  #if ( $artist->{"instrument"}->{$instrument}->{"id"} ) {
+  # $inputs[0]->send_keys( $artist->{"instrument"}->{$instrument}->{"id"} );
+  # sleep(WAIT_FOR_MB);
+  #} else {
+  # $inputs[0]->send_keys( $artist->{"instrument"}->{$instrument}->{"name"} );
+  # sleep(WAIT_FOR_MB);
+  # $driver->send_keys_to_active_element( KEYS->{'enter'} );
+  #}
+  #}
+
+  #vocals
+  if ( $creditType eq "vocals" ) {
    if ( $artist->{"instrument"}->{$instrument}->{"keystrokes"} ) {
-
-    my $element = wait_until {$driver->find_element( '.attribute-container.multiselect.vocal', 'css' )};
-    my @inputs  = $driver->find_child_elements( $element, 'input', 'css' );
-
-    # take first input
-    if ($artist->{"instrument"}->{$instrument}->{"name"}  =~ m/vocals/i) {
-     $inputs[0]->send_keys( lc( $artist->{"instrument"}->{$instrument}->{"name"} ));
+    my $vocalString = "";
+    if ( $artist->{"instrument"}->{$instrument}->{"name"} =~ m/vocals/i ) {
+     $vocalString = lc( $artist->{"instrument"}->{$instrument}->{"name"} );
     } else {
-     $inputs[0]->send_keys( lc( $artist->{"instrument"}->{$instrument}->{"name"} ) . " vocals" );
+     $vocalString = lc( $artist->{"instrument"}->{$instrument}->{"name"} ) . " vocals";
     }
-    sleep(WAIT_FOR_MB);
+    wait_until { $driver->find_element( '//input[@placeholder="vocal"]', 'xpath' ) }->send_keys($vocalString);
     $driver->send_keys_to_active_element( KEYS->{'enter'} );
    }
-
-  }    # end of vocal
+  }
 
   &clickSave( $driver, WAIT_FOR_MB_SAVE * 2 );
 
