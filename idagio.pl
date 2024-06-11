@@ -156,6 +156,7 @@ $idagioVoice->{"mezzo-soprano"}   = 1;
 $idagioVoice->{"voice"}           = 1;
 $idagioVoice->{"countertenor"}    = 1;
 $idagioVoice->{"bass-baritone"}   = 1;
+$idagioVoice->{"speaker"}         = 1;
 
 while ( my $line = <$fh> ) {
  chomp $line;
