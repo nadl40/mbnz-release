@@ -23,6 +23,7 @@ use File::Basename;
 use Mojo::DOM;
 use Env;
 use Config::General;
+use utf8;
 
 #for my modules start
 use File::Basename qw(dirname);

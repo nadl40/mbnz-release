@@ -1,5 +1,11 @@
+
 use Data::Dumper::Simple;
+use utf8;
 use Text::Tabs;
+use XML::LibXML;
+use URI::Escape;
+use Text::Levenshtein qw(distance);
+use LWP::UserAgent;
 
 use constant DISTANCE_TOLERANCE_ARTIST => 1;     # artist
 use constant DISTANCE_TOLERANCE_WORK   => 15;    # work
@@ -43,7 +49,7 @@ sub getTrackPositionMbid {
  # set up the command
  # https://musicbrainz.org/ws/2/work/60e1dcf6-e728-35be-8948-ba74500b6c6e?inc=work-rels
  $mbzUrl = $urlBase . "/ws/2/work/";
- $cmd    = "curl -s " . $mbzUrl . $Mbid . $args;
+ $cmd    = "curl -s " . $userAgent . $mbzUrl . $Mbid . $args;
 
  $counterPosition = $counterPosition + 1;
  &dumpToFile( "workTrackPosition-" . $counterPosition . ".cmd", $cmd );    #exit(0);
@@ -117,7 +123,7 @@ sub getWorkAliasesMbid {
 
  #need to pause between api calls, not needed when running local instance;
  sleep($sleepTime);
- $cmd = "curl -s " . $searchUrl;
+ $cmd = "curl -s " . $userAgent . $searchUrl;
  $xml = `$cmd`;
  $xml =~ s/xmlns/replaced/;
  $xml =~ s/xmlns:ns2/replaced2/;
@@ -224,7 +230,9 @@ sub getWorkMbid {
 
  my $searchUrl = $url01 . $url02_1 . $url02_2;
 
- my $cmd = "curl -s " . $searchUrl;
+ my $cmd = "curl -s " . $userAgent . $searchUrl;
+
+ sleep($sleepTime);
 
  my $xml = `$cmd`;
 
@@ -307,7 +315,7 @@ sub getInstrumentMbid {
  }
 
  print( "looking up: ", $name, "\n" );
- sleep(0.5);
+ sleep($sleepTime);
 
  my $url01 = $urlBase . '/ws/2/instrument/?query=';
 
@@ -315,7 +323,7 @@ sub getInstrumentMbid {
  $url02     = uri_escape_utf8($url02);
  $searchUrl = $url01 . $url02;
 
- $cmd = "curl -s " . $searchUrl;
+ $cmd = "curl -s " . $userAgent . $searchUrl;
 
  my $xml = `$cmd`;
 
@@ -373,7 +381,7 @@ sub getArtistMbid {
  }
 
  print( "looking up: ", $name, "\n" );
- sleep(0.5);
+ sleep($sleepTime);
 
  # try both AND and OR
  my ( $artistId, $mbArtistName, $url02 ) = "";
@@ -387,7 +395,8 @@ sub getArtistMbid {
   return ( $artistId, $mbArtistName );
  }
 
- $url02 = 'artist:' . $name . ' OR alias:' . $name;
+ # try AND
+ $url02 = 'artist:' . $name . ' AND alias:' . $name;
  ( $artistId, $mbArtistName ) = &getMBArtist( $url02, $name );
 
  $lookup->{$name}->{"artistId"}     = $artistId;
@@ -403,8 +412,8 @@ sub getMBArtist {
  $url02 = uri_escape_utf8($url02);
 
  # https://musicbrainz.org/ws/2/artist?query=artist%3ABernard%20Richter'
- my $cmd = "curl -s " . $urlBase . "/ws/2/artist?query=" . $url02;
-
+ my $cmd = "curl -s " . $userAgent . $urlBase . "/ws/2/artist?query=" . $url02;
+ 
  my $xml = `$cmd`;
 
  $xml =~ s/xmlns/replaced/;
@@ -480,7 +489,7 @@ sub getPlaceMbid {
   $url02     = uri_escape_utf8($url02);
   $searchUrl = $url01 . $url02 . $url03;
 
-  my $cmd = "curl -s " . $searchUrl;
+  my $cmd = "curl -s " . $userAgent . $searchUrl;
 
   my $xml = `$cmd`;
 

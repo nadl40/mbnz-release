@@ -24,6 +24,7 @@ use Mojo::DOM;
 use Env;
 use Config::General;
 use List::MoreUtils qw(firstidx);
+use utf8;
 
 #for my modules start
 use File::Basename qw(dirname);
@@ -82,6 +83,11 @@ if ( $configRef->{"local"}->{"local_url"} ) {
 }
 
 print Dumper ($idagioUrl);
+print ("API rate limit ", $sleepTime," seconds.", "\n");
+
+# set user agent for curl
+our $userAgent         = ' --user-agent "<nadl40 tagger script mbnz.pl/1.0 (george@begos.ca)>" ';
+#our $userAgent         = ' --user-agent "beets/1.6.0 python-musicbrainzngs/0.7.1 ( https://beets.io/ )" ';
 
 # set some vars
 my $profileCounter = 0;
@@ -331,6 +337,9 @@ sub getRelationshipsByTracks {
 
       my $venueId   = $recordings->{$recording}->{$entity}->{"id"};
       my $venueName = $recordings->{$recording}->{$entity}->{"name"};
+      # remove las word from $venueName
+      $venueName =~ s/\s+\S+$//;  
+      
       if ( $recordings->{$recording}->{$entity}->{"location"}->{"name"} ) {
        $venueName = $venueName . " " . $recordings->{$recording}->{$entity}->{"location"}->{"name"};
       }
@@ -384,7 +393,7 @@ sub getRelationshipsByTracks {
        my $personId = $ensembleId;
 
        # catch strings idagio roles from profiles
-       if ( $ensembles->{$ensembleId}->{"role"} && $ensembles->{$ensembleId}->{"role"} =~ m/choir|string/ ) {
+       if ( $ensembles->{$ensembleId}->{"role"} && $ensembles->{$ensembleId}->{"role"} =~ m/choir|string|piano/ ) {
 
         my $instrument = $ensembles->{$ensembleId}->{"role"};
 
@@ -1186,7 +1195,8 @@ sub albumLabel {
   my $url02     = "label:" . uri_escape_utf8($albumLabel);
   my $searchUrl = $url01 . $url02 . $url03;
 
-  $cmd = "curl -s " . $searchUrl;
+  $cmd = "curl -s "  . $userAgent . $searchUrl;
+  #print Dumper($cmd); exit(0); 
 
   sleep($sleepTime);
   my $xml = `$cmd`;

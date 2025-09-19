@@ -3,7 +3,7 @@ use Data::Dumper::Simple;
 
 # export module
 use Exporter qw(import);
-our @EXPORT_OK = qw(clean delExtension dumpToFile delExtension readConfig);
+our @EXPORT_OK = qw(clean delExtension dumpToFile delExtension readConfig writeHash);
 
 # read and parse config file
 sub readConfig {
@@ -53,8 +53,10 @@ sub clean {
   $title =~ s/,,/, /g;
   $title =~ s/ , /, /g;
 
+  # replace double quote with single quote
+  $title =~ s/\"/\'/g;
 
-  # emebeded double quotes are not good
+  # embedded double quotes are not good
   #$title =~ s/\"/\'/g;
   
   #replace typographical quote with ASCII quote

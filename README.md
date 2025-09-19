@@ -12,6 +12,7 @@ This repo contains few perl scripts to add Classical and Jazz releases to Musicb
   * [idagio](#idagio)
   * [discogs](#discogs)
   * [relationships](#relationships)
+  * [apple](#apple)
   * [recordings clone](#recordings-clone)
 - [Limitations](#limitations)
 - [Performance](#performance)
@@ -96,8 +97,6 @@ For example, this is an example of a good release:
 
 https://www.discogs.com/release/14903602-Mendelssohn-Budapest-Festival-Orchestra-Ivan-Fischer-Anna-Lucia-Richter-Barbara-Kozelj-Pro-Musica-Gi
 
-Most recent Ivan Fisher releases do not follow standards and will generate warnings and incomplete html form.
-
 ### relationships
 
 Both above scripts generate `relationshipsSerial.txt` file that is used by the script addRelationships.pl to add artist credits and works in the Musicbrainz Relationship tab.
@@ -119,7 +118,7 @@ OperaDriver was started successfully.
 
 Next we can start main script 
 ```bash
-./addRelationships.pl --data relationshipsSerial.txt --release mb_release_id
+./addRelationships.pl --release mb_release_id
 ```
    
 A new instance of the default browser should open, log you into musicbrainz.org and start adding data.
@@ -130,11 +129,31 @@ Once all the data has been entered, the script will exit but the browser window 
 You can also add relationships to an existing Musicbrainz release:
 
 * find the release in either idagio or discogs
-* run idagio or discogs release add but cancel adding release
+* run idagio or discogs release add but do not add a release
 * you might text edit `realtionshipsSerial.txt` and remove the artist or works
 * run addRelatioships.pl
 
 This is especially usefull for adding new work rels, any existing work rels will not be ovverwritten. Existing artist credits will be marked as a change unfortunatelly. 
+
+### apple
+
+Idagio and at time discogs, do not provide artists credits on individual tracks for Operas, instead all artists are credited on all tracks.
+Apple Music does provide artist credits for Opera on individual track level.
+
+The purpose of this script is to replace generic track listings with specific track listing for artist credits like conductor, ensembles and soloists. This script does not resolve work or release attributes, it only replaces track list.
+
+It requires web driver to be active.
+
+The workflow to use this script should be as follow (it can be used with discogs as well):
+```bash
+./idagio.pl --url idagioReleaseUrl
+./apple.pl  --url appleReleaseUrl
+```
+If this is new release for MB, add using generated form.html and then
+
+```bash
+./addRelationships.pl --release mb_release_id
+```
 
 ### recordings clone
 

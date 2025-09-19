@@ -22,6 +22,9 @@ use Storable 'dclone';
 use File::Copy;
 use Hash::Persistent;
 use URI::Escape;
+#use utf8;
+use Encode       qw( encode );
+use JSON         qw( );
 
 use warnings;
 use strict;
@@ -69,8 +72,15 @@ if ( !$discogsReleaseId && !$albumDirectory && !$help ) {
 }
 
 my $discogsResult = &getDisocgs($discogsReleaseId);
-my $result        = decode_json($discogsResult);
+#&dumpToFile( "release.json", $discogsResult );
+#exit(0);
 
+my $json_utf8 = encode('UTF-8', $discogsResult);  # Counteract "use utf8;"
+my $result = JSON->new->utf8->decode($json_utf8);
+
+#my $result        = decode_json($discogsResult);
+
+#exit(0);
 #print Dumper($result); exit(0);
 
 #fix the track numbering from 1.1 to 1-1 etc

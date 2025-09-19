@@ -38,10 +38,10 @@ $| = 1;
 binmode( STDOUT, "encoding(UTF-8)" );
 
 # set constant for sleep in seconds
-use constant WAIT_FOR_MB => '1';
+use constant WAIT_FOR_MB => '1.5';
 
 #how many iterations of above when saving to db
-use constant WAIT_FOR_MB_SAVE => '1';
+use constant WAIT_FOR_MB_SAVE => '1.5';
 
 # get user id and pass
 #define conf path
@@ -53,7 +53,6 @@ my $configRef = &readConfig( $confPath, $confFile );    #read config file
 my ( $releaseId, $dataFileName ) = "";
 GetOptions(
  "release:s" => \$releaseId,
- "data:s"    => \$dataFileName,
 
 );
 
@@ -69,10 +68,7 @@ if ($releaseIdWork) {
  $releaseId = $releaseIdWork;
 }
 
-if ( !$dataFileName ) {
- print( "please provide relationship hash data  --data", "\n" );
- exit;
-}
+$dataFileName = "relationshipsSerial.txt";
 
 if ( -e $dataFileName ) {
 } else {
@@ -481,7 +477,9 @@ sub addArtistRel {
   my $keyValue = "";
   if ( $artist->{"id"} ) {
    print Dumper( $artist->{"id"} );
-   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' ) }->send_keys( $artist->{"id"} );
+   wait_until { $driver->find_element( '//input[@placeholder="Type to search, or paste an MBID"]', 'xpath' )->send_keys( $artist->{"id"} ) };
+   #$element->send_keys( $artist->{"id"});
+   sleep(WAIT_FOR_MB);
    sleep(WAIT_FOR_MB);
   } else {
    print Dumper( $artist->{"name"} );
